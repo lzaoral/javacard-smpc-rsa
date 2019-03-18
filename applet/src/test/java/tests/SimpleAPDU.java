@@ -1,6 +1,6 @@
 package tests;
 
-import applet.MainApplet;
+import applet.RSAClient;
 import cardTools.CardManager;
 import cardTools.RunConfig;
 import cardTools.Util;
@@ -8,6 +8,7 @@ import cardTools.Util;
 import javax.smartcardio.CardException;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
+import java.math.BigInteger;
 import java.util.ArrayList;
 
 /**
@@ -17,10 +18,20 @@ import java.util.ArrayList;
  * @author Petr Svenda, Dusan Klinec (ph4r05)
  */
 public class SimpleAPDU {
-    private static String APPLET_AID = "482871d58ab7465e5e05";
-    private static byte APPLET_AID_BYTE[] = Util.hexStringToByteArray(APPLET_AID);
+    private static final byte RSA_SMPC_CLIENT = 0x1C;
 
-    private static final String STR_APDU_DUMMY = "00C00000080000000000000000";
+    private static final byte GENERATE_KEYS = 0x10;
+    private static final byte UPDATE_KEYS = 0x11;
+    private static final byte SIGNATURE = 0x20;
+
+
+    private static String APPLET_AID = "482871d58ab7465e5e05";
+    private static byte[] APPLET_AID_BYTE = Util.hexStringToByteArray(APPLET_AID);
+
+    private static final int E = 65537;
+    private static final CommandAPDU APDU_GENERATE_KEYS = new CommandAPDU(RSA_SMPC_CLIENT, GENERATE_KEYS,
+            0x0, 0x0, BigInteger.valueOf(E).toByteArray());
+
 
     /**
      * Main entry point.
@@ -43,7 +54,7 @@ public class SimpleAPDU {
         //runCfg.setTestCardType(RunConfig.CARD_TYPE.PHYSICAL);
 
         // Running in the simulator
-        runCfg.setAppletToSimulate(MainApplet.class)
+        runCfg.setAppletToSimulate(RSAClient.class)
                 .setTestCardType(RunConfig.CARD_TYPE.JCARDSIMLOCAL)
                 .setbReuploadApplet(true)
                 .setInstallData(new byte[8]);
@@ -54,7 +65,7 @@ public class SimpleAPDU {
         }
         System.out.println(" Done.");
 
-        final ResponseAPDU response = sendCommandWithInitSequence(cardMngr, STR_APDU_DUMMY, null);
+        final ResponseAPDU response = sendCommandWithInitSequence(cardMngr, APDU_GENERATE_KEYS, null);
         System.out.println(response);
 
         return response;
@@ -64,21 +75,21 @@ public class SimpleAPDU {
      * Sending command to the card.
      * Enables to send init commands before the main one.
      *
-     * @param cardMngr
+     * @param cardMgr
      * @param command
      * @param initCommands
      * @return
      * @throws CardException
      */
-    public static ResponseAPDU sendCommandWithInitSequence(CardManager cardMngr, String command, ArrayList<String>  initCommands) throws CardException {
+    public static ResponseAPDU sendCommandWithInitSequence(CardManager cardMgr, CommandAPDU command,
+                                                           ArrayList<CommandAPDU>  initCommands) throws CardException {
         if (initCommands != null) {
-            for (String cmd : initCommands) {
-                cardMngr.getChannel().transmit(new CommandAPDU(Util.hexStringToByteArray(cmd)));
+            for (CommandAPDU cmd : initCommands) {
+                cardMgr.getChannel().transmit(cmd);
             }
         }
 
-        final ResponseAPDU resp = cardMngr.getChannel().transmit(new CommandAPDU(Util.hexStringToByteArray(command)));
-        return resp;
+        return cardMgr.getChannel().transmit(command);
     }
 
 }

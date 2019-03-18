@@ -1,7 +1,3 @@
-// Merged file class by JavaPresso (https://github.com/petrs/JavaPresso) 
-// TODO: Change 'your_package' to your real package name as necessary
-// TODO: Add 'import your_package.jcmathlib.*;' to access all classes as usual
-
 package JCMathlib;
 
 import javacard.framework.ISOException;
