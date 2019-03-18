@@ -1,0 +1,94 @@
+group 'test-applet'
+version '1.0-SNAPSHOT'
+
+// Buildscript configuration for the javacard-gradle plugin.
+// Do not modify this particular block. Dependencies for the project are lower.
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.klinec:gradle-javacard:1.6.1'
+    }
+}
+
+apply plugin: 'javacard'
+sourceCompatibility = 1.7
+
+// Common settings, definitions
+final def rootPath = rootDir.absolutePath
+final def libs = rootPath + '/libs'
+final def libsSdk = rootPath + '/libs-sdks'
+
+// Repositories for your project
+repositories {
+    mavenCentral()
+    // mavenLocal() // for local maven repository if needed
+
+    // Repository with JCardSim, Globalplatform, etc, ...
+    maven {
+        url  "https://dl.bintray.com/ph4r05/jcard"
+    }
+
+    // Local lib repository
+    flatDir {
+        dirs libs
+    }
+}
+
+// Dependencies for your project
+dependencies {
+    testCompile 'org.testng:testng:6.1.1'
+
+    jcardsim 'com.licel:jcardsim:3.0.5'
+}
+
+test {
+    useTestNG()
+    jvmArgs '-noverify'
+}
+
+// JavaCard SDKs and libraries
+final def JC212 = libsSdk + '/jc212_kit'
+final def JC221 = libsSdk + '/jc221_kit'
+final def JC222 = libsSdk + '/jc222_kit'
+final def JC303 = libsSdk + '/jc303_kit'
+final def JC304 = libsSdk + '/jc304_kit'
+final def JC305 = libsSdk + '/jc305u1_kit'
+final def JC305u2 = libsSdk + '/jc305u2_kit'
+
+// Which JavaCard SDK to use - select
+final def JC_SELECTED = JC305u2
+
+javacard {
+
+    //noinspection GroovyAssignabilityCheck
+    config {
+        jckit JC_SELECTED
+
+        // Using custom repo with jcardsim
+        addSurrogateJcardSimRepo false
+        addImplicitJcardSim false
+        addImplicitJcardSimJunit false
+
+        //noinspection GroovyAssignabilityCheck
+        cap {
+            packageName 'applet'
+            version '0.1'
+            aid '01:02:03:04:05:06:07:08:09'
+            output 'applet.cap'
+
+            //noinspection GroovyAssignabilityCheck
+            applet {
+                className 'applet.MainApplet'
+                aid '01:02:03:04:05:06:07:08:09:01:02'
+            }
+
+            //noinspection GroovyAssignabilityCheck
+            dependencies {
+                remote 'com.klinec:globalplatform:2.1.1'
+            }
+        }
+    }
+}
+
