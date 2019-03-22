@@ -54,7 +54,7 @@ final def JC221 = libsSdk + '/jc221_kit'
 final def JC222 = libsSdk + '/jc222_kit'
 final def JC303 = libsSdk + '/jc303_kit'
 final def JC304 = libsSdk + '/jc304_kit'
-final def JC305 = libsSdk + '/jc305u1_kit'
+final def JC305u1 = libsSdk + '/jc305u1_kit'
 final def JC305u2 = libsSdk + '/jc305u2_kit'
 final def JC305u3 = libsSdk + '/jc305u3_kit'
 

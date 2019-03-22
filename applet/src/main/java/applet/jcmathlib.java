@@ -1,4 +1,4 @@
-package JCMathlib;
+package applet;
 
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;

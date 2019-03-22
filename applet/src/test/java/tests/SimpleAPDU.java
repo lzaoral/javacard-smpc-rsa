@@ -40,13 +40,13 @@ public class SimpleAPDU {
      */
     public static void main(String[] args) {
         try {
-            demoSingleCommand();
+            generateKeys();
         } catch (Exception ex) {
             System.out.println("Exception : " + ex);
         }
     }
 
-    public static ResponseAPDU demoSingleCommand() throws Exception {
+    public static ResponseAPDU generateKeys() throws Exception {
         final CardManager cardMngr = new CardManager(true, APPLET_AID_BYTE);
         final RunConfig runCfg = RunConfig.getDefaultConfig();
 

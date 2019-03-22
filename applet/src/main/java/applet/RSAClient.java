@@ -13,7 +13,7 @@ import javacard.security.RSAPublicKey;
 import javacard.security.RandomData;
 import javacardx.crypto.Cipher;
 
-import JCMathlib.jcmathlib.*;
+import applet.jcmathlib.*;
 
 public class RSAClient extends Applet implements MultiSelectable {
     private static final byte RSA_SMPC_CLIENT = 0x1C;
@@ -25,13 +25,19 @@ public class RSAClient extends Applet implements MultiSelectable {
     private static boolean generatedKeys = false;
     private static final short BUFFER_SIZE = 256;
 
-    private static final byte[] E = new byte[BUFFER_SIZE];
-    private static final byte[] D1 = new byte[BUFFER_SIZE];
-    private byte[] tmpBuffer = JCSystem.makeTransientByteArray(BUFFER_SIZE, JCSystem.CLEAR_ON_DESELECT);
+    private final Bignat E;
+    private final Bignat N;
+    private final Bignat D;
+    private final Bignat D1;
+    private final Bignat D2;
+    private byte[] tmpBuffer;
 
-    private RandomData rng = RandomData.getInstance(RandomData.ALG_KEYGENERATION);
-    private Cipher rsa = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
-    private KeyPair rsaPair = new KeyPair(KeyPair.ALG_RSA, KeyBuilder.LENGTH_RSA_2048);
+    private final ECConfig jcMathCfg;
+    private final Bignat_Helper bignatHelper;
+
+    private final RandomData rng;
+    private final Cipher rsa;
+    private final KeyPair rsaPair;
     private RSAPrivateKey privateKey;
     private RSAPublicKey publicKey;
 
@@ -40,6 +46,21 @@ public class RSAClient extends Applet implements MultiSelectable {
     }
 
     public RSAClient(byte[] buffer, short offset, byte length) {
+        jcMathCfg = new ECConfig((short) 256);
+        bignatHelper = jcMathCfg.bnh;
+
+        E = new Bignat(new byte[256], bignatHelper);
+        N = new Bignat(new byte[256], bignatHelper);
+        D = new Bignat(new byte[256], bignatHelper);
+        D1 = new Bignat(new byte[256], bignatHelper);
+        D2 = new Bignat(new byte[256], bignatHelper);
+
+        tmpBuffer = JCSystem.makeTransientByteArray(BUFFER_SIZE, JCSystem.CLEAR_ON_DESELECT);
+
+        rng = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
+        rsa = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
+        rsaPair = new KeyPair(KeyPair.ALG_RSA, KeyBuilder.LENGTH_RSA_2048);
+
         register();
     }
 
@@ -74,26 +95,27 @@ public class RSAClient extends Applet implements MultiSelectable {
         byte[] apduBuffer = apdu.getBuffer();
 
         short lc = (short) apduBuffer[ISO7816.OFFSET_LC];
-
-
-        for (short i = 0; i > lc; i++) {
-            E[(short) (BUFFER_SIZE - lc + i)] = apduBuffer[(short) (ISO7816.OFFSET_CDATA + i)];
-        }
-        // Util.arrayCopy(E, (short) (BUFFER_SIZE - lc), apduBuffer, ISO7816.OFFSET_CDATA, lc);
+        E.from_byte_array(lc, (short) 0, apduBuffer, ISO7816.OFFSET_CDATA);
+        // Util.arrayCopyNonAtomic(apduBuffer, ISO7816.OFFSET_CDATA, tmpBuffer, (short) (BUFFER_SIZE - lc), lc);
 
         privateKey = (RSAPrivateKey) rsaPair.getPrivate();
         publicKey = (RSAPublicKey) rsaPair.getPublic();
 
-        privateKey.setExponent(E, (short) 0, BUFFER_SIZE);
+        publicKey.setExponent(E.as_byte_array(), (short) 0, E.length());
         rsaPair.genKeyPair();
 
-        rng.nextBytes(D1, (short) 0x0, BUFFER_SIZE);
+        privateKey.getModulus(N.as_byte_array(), (short) 0);
+        privateKey.getExponent(D.as_byte_array(), (short) 0);
+
+        rng.nextBytes(tmpBuffer, (short) 0x0, BUFFER_SIZE);
+        D1.from_byte_array(BUFFER_SIZE, (short) 0, apduBuffer, ISO7816.OFFSET_CDATA);
+
+        D1.mod_add();
     }
 
-    private void  signRSAMessage(APDU apdu) {}
+    private void signRSAMessage(APDU apdu) {}
 
     private void updateRSAKeys(APDU apdu) {}
-
 
     public boolean select(boolean b) {
         return true;
