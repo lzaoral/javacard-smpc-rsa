@@ -21,15 +21,25 @@ public class SimpleAPDU {
     private static final byte RSA_SMPC_CLIENT = 0x1C;
 
     private static final byte GENERATE_KEYS = 0x10;
-    private static final byte UPDATE_KEYS = 0x11;
-    private static final byte SIGNATURE = 0x20;
+    private static final byte GET_N = 0x11;
+    private static final byte GET_D2 = 0x12;
+    private static final byte UPDATE_KEYS = 0x20;
+    private static final byte TEST = 0x30;
+    private static final short CLIENT_KEY_BYTE_LENGTH = 256;
 
 
     private static String APPLET_AID = "482871d58ab7465e5e05";
     private static byte[] APPLET_AID_BYTE = Util.hexStringToByteArray(APPLET_AID);
 
     private static final int E = 65537;
+
     private static final CommandAPDU APDU_GENERATE_KEYS = new CommandAPDU(RSA_SMPC_CLIENT, GENERATE_KEYS,
+            0x0, 0x0, BigInteger.valueOf(E).toByteArray());
+    private static final CommandAPDU APDU_GET_N = new CommandAPDU(RSA_SMPC_CLIENT, GET_N,
+            0x0, 0x0, CLIENT_KEY_BYTE_LENGTH);
+    private static final CommandAPDU APDU_GET_D2 = new CommandAPDU(RSA_SMPC_CLIENT, GET_D2,
+            0x0, 0x0, CLIENT_KEY_BYTE_LENGTH);
+    private static final CommandAPDU APDU_TEST = new CommandAPDU(RSA_SMPC_CLIENT, TEST,
             0x0, 0x0, BigInteger.valueOf(E).toByteArray());
 
 
@@ -65,7 +75,34 @@ public class SimpleAPDU {
         }
         System.out.println(" Done.");
 
-        final ResponseAPDU response = sendCommandWithInitSequence(cardMngr, APDU_GENERATE_KEYS, null);
+        ResponseAPDU response = sendCommandWithInitSequence(cardMngr, APDU_GENERATE_KEYS, null);
+        response = sendCommandWithInitSequence(cardMngr, APDU_GET_N, null);
+        response = sendCommandWithInitSequence(cardMngr, APDU_GET_D2, null);
+        System.out.println(response);
+
+        return response;
+    }
+
+    public static ResponseAPDU test() throws Exception {
+        final CardManager cardMngr = new CardManager(true, APPLET_AID_BYTE);
+        final RunConfig runCfg = RunConfig.getDefaultConfig();
+
+        // Running on physical card
+        //runCfg.setTestCardType(RunConfig.CARD_TYPE.PHYSICAL);
+
+        // Running in the simulator
+        runCfg.setAppletToSimulate(RSAClient.class)
+                .setTestCardType(RunConfig.CARD_TYPE.JCARDSIMLOCAL)
+                .setbReuploadApplet(true)
+                .setInstallData(new byte[8]);
+
+        System.out.print("Connecting to card...");
+        if (!cardMngr.Connect(runCfg)) {
+            return null;
+        }
+        System.out.println(" Done.");
+
+        final ResponseAPDU response = sendCommandWithInitSequence(cardMngr, APDU_TEST, null);
         System.out.println(response);
 
         return response;

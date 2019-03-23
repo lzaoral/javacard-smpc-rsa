@@ -2003,12 +2003,12 @@ public class jcmathlib {
          * The size of speedup engine used for fast modulo exponent computation
          * (must be larger than biggest Bignat used)
          */
-        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 512;
+        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 4097;
         /**
          * The size of speedup engine used for fast multiplication of large numbers
          * Must be larger than 2x biggest Bignat used
          */
-        public short MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 768;
+        public short MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 2049;
         
         /**
          * If true, fast multiplication of large numbers via RSA engine can be used.
@@ -2192,16 +2192,16 @@ public class jcmathlib {
          * The size of speedup engine used for fast modulo exponent computation
          * (must be larger than biggest Bignat used)
          */
-        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 512;
+        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 2049;
         /**
          * The size of speedup engine used for fast multiplication of large numbers
          * Must be larger than 2x biggest Bignat used
          */
-        public short MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 768;
+        public short MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 4097;
         /**
          * The size of largest integer used in computations
          */
-        public short MAX_BIGNAT_SIZE = (short) 65; // ((short) (MODULO_ENGINE_MAX_LENGTH_BITS / 8) + 1);
+        public short MAX_BIGNAT_SIZE = 64; //(short) ((MODULO_RSA_ENGINE_MAX_LENGTH_BITS / 8) + 1);
         /**
          * The size of largest ECC point used
          */
@@ -2268,10 +2268,10 @@ public class jcmathlib {
         
         public void setECC256Config() {
             reset();
-            MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 512;
+            //MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 512;
             //MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 768;        
-            MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 1024;  // MPC Sign needs bigger array      
-            MAX_POINT_SIZE = (short) 64;
+            //MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 1024;  // MPC Sign needs bigger array
+            //MAX_POINT_SIZE = (short) 64;
             computeDerivedLengths();
         }
         public void setECC384Config() {

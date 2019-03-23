@@ -12,7 +12,9 @@ import javax.smartcardio.ResponseAPDU;
  * @author xsvenda, Dusan Klinec (ph4r05)
  */
 public class AppletTest {
-    
+
+    private static final int TEST_COUNT = 1000;
+
     public AppletTest() {
     }
 
@@ -33,11 +35,22 @@ public class AppletTest {
     }
 
     // Example test
-    @Test
+    /*@Test
     public void hello() throws Exception {
         final ResponseAPDU responseAPDU = SimpleAPDU.generateKeys();
         Assert.assertNotNull(responseAPDU);
         Assert.assertEquals(0x9000, responseAPDU.getSW());
         Assert.assertNotNull(responseAPDU.getBytes());
+    }*/
+
+    @Test
+    public void implTest() throws Exception {
+        for (int i = 1; i <= TEST_COUNT; i++) {
+            System.out.print("TEST" + i +": ");
+            final ResponseAPDU responseAPDU = SimpleAPDU.test();
+            Assert.assertNotNull(responseAPDU);
+            Assert.assertEquals(0x9000, responseAPDU.getSW());
+            System.out.println("OK");
+        }
     }
 }
