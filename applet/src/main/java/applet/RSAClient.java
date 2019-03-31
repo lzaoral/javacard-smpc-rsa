@@ -138,7 +138,13 @@ public class RSAClient extends Applet implements MultiSelectable {
         phiN.mult(P, Q);
 
         D.clone(E);
-        D.mod_inv(phiN);
+        D.mod_inv(P);
+
+        Bignat foo = new Bignat(new byte[BUFFER_SIZE], bignatHelper);
+        foo.mod_mult(E, D, P);
+
+        if (!foo.equals(Bignat_Helper.ONE))
+            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
 
         rng.generateData(tmpBuffer, (short) 0x0, BUFFER_SIZE);
         D1.from_byte_array(BUFFER_SIZE, (short) 0, tmpBuffer, (short) 0);
