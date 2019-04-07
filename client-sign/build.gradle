@@ -1,4 +1,4 @@
-group 'test-applet'
+group 'smpc-rsa'
 version '1.0-SNAPSHOT'
 
 // Buildscript configuration for the javacard-gradle plugin.
@@ -59,7 +59,7 @@ final def JC305u2 = libsSdk + '/jc305u2_kit'
 final def JC305u3 = libsSdk + '/jc305u3_kit'
 
 // Which JavaCard SDK to use - select
-final def JC_SELECTED = JC305u3
+final def JC_SELECTED = JC222
 
 javacard {
 
@@ -81,7 +81,7 @@ javacard {
 
             //noinspection GroovyAssignabilityCheck
             applet {
-                className 'applet.RSAClient'
+                className 'applet.RSAClientSign'
                 aid '01:02:03:04:05:06:07:08:09:01:02'
             }
 
