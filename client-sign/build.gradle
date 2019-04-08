@@ -41,6 +41,8 @@ dependencies {
     testCompile 'org.testng:testng:6.1.1'
 
     jcardsim 'com.licel:jcardsim:3.0.5'
+
+    compile 'com.payneteasy:ber-tlv:1.0-9'
 }
 
 test {

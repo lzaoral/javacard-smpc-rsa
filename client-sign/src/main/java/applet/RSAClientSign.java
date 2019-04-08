@@ -23,8 +23,7 @@ public class RSAClientSign extends Applet implements MultiSelectable {
 
     private final Bignat SGN;
 
-    private byte[] tmpBuffer;
-    private static byte[] keyStatus = new byte[3];
+    private static byte[] keyStatus;
     private static boolean generatedKeys;
 
     private final ECConfig jcMathCfg;
@@ -44,7 +43,7 @@ public class RSAClientSign extends Applet implements MultiSelectable {
 
         SGN = new Bignat(BUFFER_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_DESELECT, bignatHelper);
 
-        tmpBuffer = JCSystem.makeTransientByteArray(BUFFER_SIZE, JCSystem.CLEAR_ON_DESELECT);
+        keyStatus = JCSystem.makeTransientByteArray((short) 3, JCSystem.CLEAR_ON_RESET);
 
         register();
     }
@@ -66,11 +65,11 @@ public class RSAClientSign extends Applet implements MultiSelectable {
             case SIGNATURE:
                 signRSAMessage(apdu);
                 break;
-
+/*
             case TEST:
                 test(apdu);
                 break;
-
+*/
             default:
                 ISOException.throwIt(ISO7816.SW_UNKNOWN);
         }
@@ -78,18 +77,19 @@ public class RSAClientSign extends Applet implements MultiSelectable {
 
     private void setNumber(APDU apdu, Bignat num) {
         byte[] apduBuffer = apdu.getBuffer();
-        short lc = (short) apduBuffer[ISO7816.OFFSET_LC];
-        short p2 = apduBuffer[ISO7816.OFFSET_P2];
+        short lc = (short) ((short) apduBuffer[ISO7816.OFFSET_LC] & 0xFF);
+        byte p2 = apduBuffer[ISO7816.OFFSET_P2];
 
         if (p2 > 0x01)
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        // TODO:
-        num.set_from_byte_array((short) (BUFFER_SIZE - (p2 * 0xFF + (lc < 0 ? lc * -1 : lc))),
-                apduBuffer, ISO7816.OFFSET_CDATA, lc);
+        short position = (short) (BUFFER_SIZE - (p2 * 0xFF + lc));
+        num.set_from_byte_array(position, apduBuffer, ISO7816.OFFSET_CDATA, lc);
     }
 
     private void setRSAKeys(APDU apdu) {
+        // TODO: reset behavior?
+
         byte[] apduBuffer = apdu.getBuffer();
         short p1 = apduBuffer[ISO7816.OFFSET_P1];
 
@@ -110,10 +110,10 @@ public class RSAClientSign extends Applet implements MultiSelectable {
                 ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
         }
 
-        keyStatus[p1] = apduBuffer[ISO7816.OFFSET_P2];
+        ++keyStatus[p1];
 
         // TODO: E length
-        if (keyStatus[SET_D] == 0x01 && keyStatus[SET_N] == 0x01) {
+        if (keyStatus[SET_E] == 1 && keyStatus[SET_D] == 2 && keyStatus[SET_N] == 2) {
             generatedKeys = true;
             E.shrink();
             D.shrink();
@@ -142,6 +142,7 @@ public class RSAClientSign extends Applet implements MultiSelectable {
         apdu.setOutgoingAndSend((short) 0, BUFFER_SIZE);
     }
 
+    /*
     private void test(APDU apdu) {
         // Random data
         final byte[] message = {'T', 'h', 'i', 's', ' ', 'i', 's', ' ', 'a', ' ', 't', 'e', 's', 't', '!'};
@@ -156,6 +157,7 @@ public class RSAClientSign extends Applet implements MultiSelectable {
         if (!ciphertext.equals(plaintext))
             ISOException.throwIt(ISO7816.SW_DATA_INVALID);
     }
+    */
 
     public boolean select(boolean b) {
         return true;
