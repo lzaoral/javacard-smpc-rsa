@@ -2153,7 +2153,7 @@ public class jcmathlib {
             fnc_NmodE_pubKey = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, MODULO_RSA_ENGINE_MAX_LENGTH_BITS, false);
     
             // Speedup for fast multiplication
-            fnc_mult_keypair = new KeyPair(KeyPair.ALG_RSA_CRT, MULT_RSA_ENGINE_MAX_LENGTH_BITS);
+            fnc_mult_keypair = new KeyPair(KeyPair.ALG_RSA_CRT, MULT_RSA_ENGINE_MAX_LENGTH_BITS); //xxxxx
             fnc_mult_keypair.genKeyPair();
             fnc_mult_pubkey_pow2 = (RSAPublicKey) fnc_mult_keypair.getPublic();
             //mult_privkey_pow2 = (RSAPrivateCrtKey) mult_keypair.getPrivate();

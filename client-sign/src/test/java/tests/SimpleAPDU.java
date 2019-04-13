@@ -28,6 +28,8 @@ public class SimpleAPDU {
     private static final byte SET_D = 0x01;
     private static final byte SET_N = 0x02;
 
+    private static final byte SET_MESSAGE = 0x11;
+
     private static final byte PART_0 = 0x00;
     private static final byte PART_1 = 0x01;
 
@@ -49,7 +51,7 @@ public class SimpleAPDU {
 
     private final ArrayList<CommandAPDU> APDU_SET_N = new ArrayList<>();
     private final ArrayList<CommandAPDU> APDU_SET_D = new ArrayList<>();
-    private final ArrayList<CommandAPDU> APDU_SIGNATURE = new ArrayList<>();
+    private final ArrayList<CommandAPDU> APDU_MESSAGE = new ArrayList<>();
 
     private static final CommandAPDU APDU_TEST = new CommandAPDU(RSA_SMPC_CLIENT, TEST, 0x0, 0x0);
 
@@ -61,6 +63,7 @@ public class SimpleAPDU {
             BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
             byte[] num = DatatypeConverter.parseHexBinary(reader.readLine());
+            // TODO, > comparison
             if (num.length > CLIENT_KEY_BYTE_LENGTH)
                 throw new IllegalArgumentException("Private key cannot be larger than modulus.");
 
@@ -80,6 +83,27 @@ public class SimpleAPDU {
 
             if (reader.readLine() != null)
                 throw new IOException("Wrong 'client_card.key' file format.");
+        }
+
+        try (InputStream in = new FileInputStream("message.txt")) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+
+            byte[] num = DatatypeConverter.parseHexBinary(reader.readLine());
+            // TODO, > comparison
+            if (num.length > CLIENT_KEY_BYTE_LENGTH)
+                throw new IllegalArgumentException("Message key cannot be larger than modulus.");
+
+            if (num.length <= 0xFF)
+                APDU_MESSAGE.add(new CommandAPDU(RSA_SMPC_CLIENT, SET_MESSAGE, 0x0, PART_0, num));
+            else {
+                for (int i = num.length; i > 0; i -= 0xFF) {
+                    APDU_MESSAGE.add(new CommandAPDU(RSA_SMPC_CLIENT, SET_MESSAGE, 0x0, 1 - i / 0xFF,
+                            Arrays.copyOfRange(num, i - 0xFF > 0 ? i - 0xFF : 0, i)));
+                }
+            }
+
+            if (reader.readLine() != null)
+                throw new IOException("Wrong 'message.key' file format.");
         }
 
         final RunConfig runCfg = RunConfig.getDefaultConfig();
@@ -127,12 +151,19 @@ public class SimpleAPDU {
             cardMgr.getChannel().transmit(cmd);
         }
 
-        // TODO:
+        for (CommandAPDU cmd : APDU_MESSAGE) {
+            cardMgr.getChannel().transmit(cmd);
+        }
+
         ResponseAPDU response = cardMgr.getChannel().transmit(new CommandAPDU(RSA_SMPC_CLIENT, SIGNATURE,
-                0x0, 0x0, new byte[]{10}, CLIENT_KEY_BYTE_LENGTH));
+                0x0, 0x0, CLIENT_KEY_BYTE_LENGTH));
 
         try (OutputStream out = new FileOutputStream("client.sig")) {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+            try (InputStream in = new FileInputStream("message.txt")) {
+                writer.write(new BufferedReader(new InputStreamReader(in)).readLine());
+            }
+            writer.write(System.lineSeparator());
             writer.write(DatatypeConverter.printHexBinary(response.getData()));
             writer.flush();
         }

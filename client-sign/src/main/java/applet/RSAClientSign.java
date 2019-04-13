@@ -11,6 +11,8 @@ public class RSAClientSign extends Applet implements MultiSelectable {
     private static final byte SET_D = 0x01;
     private static final byte SET_N = 0x02;
 
+    private static final byte SET_MESSAGE = 0x11;
+
     private static final byte SIGNATURE = 0x20;
 
     private static final byte TEST = 0x30;
@@ -24,7 +26,8 @@ public class RSAClientSign extends Applet implements MultiSelectable {
     private final Bignat SGN;
 
     private static byte[] keyStatus;
-    private static boolean generatedKeys;
+    private static boolean generatedKeys = false;
+    private static boolean messageSet = false;
 
     private final ECConfig jcMathCfg;
     private final Bignat_Helper bignatHelper;
@@ -60,6 +63,10 @@ public class RSAClientSign extends Applet implements MultiSelectable {
         switch (apduBuffer[ISO7816.OFFSET_INS]) {
             case SET_KEYS:
                 setRSAKeys(apdu);
+                break;
+
+            case SET_MESSAGE:
+                setMessage(apdu);
                 break;
 
             case SIGNATURE:
@@ -121,8 +128,17 @@ public class RSAClientSign extends Applet implements MultiSelectable {
         }
     }
 
+    private void setMessage(APDU apdu) {
+        if (apdu.getBuffer()[ISO7816.OFFSET_P1] != 0)
+            ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+
+        setNumber(apdu, SGN);
+
+        messageSet = true;
+    }
+
     private void signRSAMessage(APDU apdu) {
-        if (!generatedKeys)
+        if (!generatedKeys || !messageSet)
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         byte[] apduBuffer = apdu.getBuffer();
@@ -137,7 +153,6 @@ public class RSAClientSign extends Applet implements MultiSelectable {
 
         SGN.mod_exp(D, N);
 
-        // TODO: correct indices???
         Util.arrayCopyNonAtomic(SGN.as_byte_array(), (short) 0, apduBuffer, (short) 0, BUFFER_SIZE);
         apdu.setOutgoingAndSend((short) 0, BUFFER_SIZE);
     }
