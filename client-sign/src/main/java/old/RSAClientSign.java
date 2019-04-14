@@ -1,9 +1,7 @@
-package applet;
+package old;
 
-import com.sun.imageio.plugins.jpeg.JPEG;
+import old.jcmathlib.*;
 import javacard.framework.*;
-import javacard.security.*;
-import javacardx.crypto.*;
 
 public class RSAClientSign extends Applet implements MultiSelectable {
     private static final byte RSA_SMPC_CLIENT = 0x1C;
@@ -16,34 +14,31 @@ public class RSAClientSign extends Applet implements MultiSelectable {
 
     private static final byte SIGNATURE = 0x20;
 
-    private static final short ARR_LEN = 256;
+    private static final short BUFFER_SIZE = 256;
 
-    private final byte[] D;
-    private final byte[] N;
-    private final byte[] MSG;
-    private final byte[] SGN;
-
-    private final Cipher rsa;
-    private final RSAPrivateKey key;
-
+    private final Bignat E;
+    private final Bignat D;
+    private final Bignat N;
+    private final Bignat SGN;
 
     private static byte[] keyStatus;
     private static boolean generatedKeys = false;
     private static boolean messageSet = false;
+
+    private final ECConfig jcMathCfg;
 
     public static void install(byte[] bArray, short bOffset, byte bLength) {
         new RSAClientSign(bArray, bOffset, bLength);
     }
 
     public RSAClientSign(byte[] buffer, short offset, byte length) {
-        D = new byte[ARR_LEN];
-        N = new byte[ARR_LEN];
+        jcMathCfg = new ECConfig(BUFFER_SIZE);
+        Bignat_Helper bignatHelper = jcMathCfg.bnh;
 
-        MSG = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
-        SGN = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
-
-        key = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, KeyBuilder.LENGTH_RSA_2048, false);
-        rsa = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
+        E = new Bignat(BUFFER_SIZE, JCSystem.MEMORY_TYPE_PERSISTENT, bignatHelper);
+        D = new Bignat(BUFFER_SIZE, JCSystem.MEMORY_TYPE_PERSISTENT, bignatHelper);
+        N = new Bignat(BUFFER_SIZE, JCSystem.MEMORY_TYPE_PERSISTENT, bignatHelper);
+        SGN = new Bignat(BUFFER_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_DESELECT, bignatHelper);
 
         keyStatus = JCSystem.makeTransientByteArray((short) 2, JCSystem.CLEAR_ON_RESET);
 
@@ -77,7 +72,7 @@ public class RSAClientSign extends Applet implements MultiSelectable {
         }
     }
 
-    private void setNumber(APDU apdu, byte[] num) {
+    private void setNumber(APDU apdu, Bignat num) {
         byte[] apduBuffer = apdu.getBuffer();
         short lc = (short) ((short) apduBuffer[ISO7816.OFFSET_LC] & 0xFF);
         byte p2 = apduBuffer[ISO7816.OFFSET_P2];
@@ -85,8 +80,8 @@ public class RSAClientSign extends Applet implements MultiSelectable {
         if (p2 > 0x01)
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        short position = (short) (ARR_LEN - (p2 * 0xFF + lc));
-        Util.arrayCopyNonAtomic(apduBuffer, ISO7816.OFFSET_CDATA, num, position, lc);
+        short position = (short) (BUFFER_SIZE - (p2 * 0xFF + lc));
+        num.set_from_byte_array(position, apduBuffer, ISO7816.OFFSET_CDATA, lc);
     }
 
     private void setRSAKeys(APDU apdu) {
@@ -109,15 +104,20 @@ public class RSAClientSign extends Applet implements MultiSelectable {
         }
 
         ++keyStatus[p1];
-        if (keyStatus[SET_D] == 2 && keyStatus[SET_N] == 2)
+        if (keyStatus[SET_D] == 2 && keyStatus[SET_N] == 2) {
             generatedKeys = true;
+
+            E.shrink();
+            D.shrink();
+            N.shrink();
+        }
     }
 
     private void setMessage(APDU apdu) {
         if (apdu.getBuffer()[ISO7816.OFFSET_P1] != 0)
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        setNumber(apdu, MSG);
+        setNumber(apdu, SGN);
         messageSet = true;
     }
 
@@ -130,19 +130,15 @@ public class RSAClientSign extends Applet implements MultiSelectable {
         if (apduBuffer[ISO7816.OFFSET_P1] != 0x00 || apduBuffer[ISO7816.OFFSET_P2] != 0x00)
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        key.setModulus(N, (short) 0, ARR_LEN);
-        key.setExponent(D, (short) 0, ARR_LEN);
+        SGN.mod_exp(D, N);
 
-        rsa.init(key, Cipher.MODE_DECRYPT);
-        rsa.doFinal(MSG, (short) 0, (short) MSG.length, SGN, (short) 0);
-
-        Util.arrayCopyNonAtomic(SGN, (short) 0, apduBuffer, (short) 0, ARR_LEN);
-        apdu.setOutgoingAndSend((short) 0, ARR_LEN);
+        Util.arrayCopyNonAtomic(SGN.as_byte_array(), (short) 0, apduBuffer, (short) 0, BUFFER_SIZE);
+        apdu.setOutgoingAndSend((short) 0, BUFFER_SIZE);
     }
 
     public boolean select(boolean b) {
         return true;
     }
 
-    public void deselect(boolean b) {}
+    public void deselect(boolean b) { }
 }

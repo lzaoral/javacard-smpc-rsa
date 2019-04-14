@@ -19,8 +19,7 @@ public class CardManager {
     protected CommandAPDU lastCommand = null;
     protected CardChannel channel = null;
     
-    public CardManager(boolean bDebug, byte[] appletAID) {
-        this.bDebug = bDebug;
+    public CardManager(byte[] appletAID) {
         this.appletId = appletAID;
     }
 
@@ -35,6 +34,7 @@ public class CardManager {
         switch (runCfg.testCardType) {
             case PHYSICAL: {
                 channel = ConnectPhysicalCard(runCfg.targetReaderIndex);
+                bDebug = true;
                 break;
             }
             case JCOPSIM: {

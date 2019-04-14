@@ -34,23 +34,28 @@ public class AppletTest {
     public void tearDownMethod() throws Exception {
     }
 
-    // Example test
-    /*@Test
-    public void hello() throws Exception {
-        final ResponseAPDU responseAPDU = SimpleAPDU.generateKeys();
-        Assert.assertNotNull(responseAPDU);
-        Assert.assertEquals(0x9000, responseAPDU.getSW());
-        Assert.assertNotNull(responseAPDU.getBytes());
-    }*/
 
     @Test
-    public void implTest() throws Exception {
+    public void simpleSign() throws Exception {
+        SimpleAPDU simpleAPDU = new SimpleAPDU();
+
+        ResponseAPDU responseAPDU = simpleAPDU.generateKeys();
+        Assert.assertEquals(0x9000, responseAPDU.getSW());
+        Assert.assertEquals(0, responseAPDU.getData().length);
+
+        simpleAPDU.getKeys();
+
+        responseAPDU = simpleAPDU.signMessage();
+        Assert.assertEquals(0x9000, responseAPDU.getSW());
+
+        /*
         for (int i = 1; i <= TEST_COUNT; i++) {
             System.out.print("TEST" + i +": ");
-            final ResponseAPDU responseAPDU = SimpleAPDU.test();
+            final ResponseAPDU responseAPDU = simpleAPDU.test();
             Assert.assertNotNull(responseAPDU);
             Assert.assertEquals(0x9000, responseAPDU.getSW());
             System.out.println("OK");
         }
+        */
     }
 }

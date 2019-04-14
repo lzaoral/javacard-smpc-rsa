@@ -1,17 +1,9 @@
-package applet;
+package old;
 
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
-import javacard.security.CryptoException;
-import javacard.security.ECPrivateKey;
-import javacard.security.ECPublicKey;
-import javacard.security.KeyAgreement;
-import javacard.security.KeyBuilder;
-import javacard.security.KeyPair;
-import javacard.security.MessageDigest;
-import javacard.security.RSAPublicKey;
-import javacard.security.Signature;
+import javacard.security.*;
 import javacardx.crypto.Cipher;
 
 public class jcmathlib {
@@ -424,7 +416,16 @@ public class jcmathlib {
          * @param outOffset start offset inside outBuffer for write
          */
         public void append_zeros(short targetLength, byte[] outBuffer, short outOffset) {
+            // TODO: added
+            if (targetLength < this.size)
+                ISOException.throwIt(ReturnCodes.SW_BIGNAT_INVALIDRESIZE);
+
             Util.arrayCopyNonAtomic(value, (short) 0, outBuffer, outOffset, this.size); //copy the value
+
+            // TODO: added
+            if (targetLength == this.size)
+                return;
+
             Util.arrayFillNonAtomic(outBuffer, (short) (outOffset + this.size), (short) (targetLength - this.size), (byte) 0); //append zeros
         } 
         /**
@@ -1878,7 +1879,7 @@ public class jcmathlib {
             }
             // Potential problem: we are changing key value for publicKey already used before with occ.bnHelper.modCipher. 
             // Simulator and potentially some cards fail to initialize this new value properly (probably assuming that same key object will always have same value)
-            // Fix (if problem occure): generate new key object: RSAPublicKey publicKey = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, (short) (baseLen * 8), false);
+            // Fix (if problem occurs): generate new key object: RSAPublicKey publicKey = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, (short) (baseLen * 8), false);
     
             bnh.fnc_NmodE_pubKey.setExponent(exponent, (short) 0, exponentLen);
             bnh.lock(bnh.fnc_deep_resize_tmp);
@@ -2003,12 +2004,12 @@ public class jcmathlib {
          * The size of speedup engine used for fast modulo exponent computation
          * (must be larger than biggest Bignat used)
          */
-        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 4097;
+        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 2048;
         /**
          * The size of speedup engine used for fast multiplication of large numbers
          * Must be larger than 2x biggest Bignat used
          */
-        public short MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 2049;
+        public short MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 256;
         
         /**
          * If true, fast multiplication of large numbers via RSA engine can be used.
@@ -2153,7 +2154,7 @@ public class jcmathlib {
             fnc_NmodE_pubKey = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, MODULO_RSA_ENGINE_MAX_LENGTH_BITS, false);
     
             // Speedup for fast multiplication
-            fnc_mult_keypair = new KeyPair(KeyPair.ALG_RSA_CRT, MULT_RSA_ENGINE_MAX_LENGTH_BITS);
+            fnc_mult_keypair = new KeyPair(KeyPair.ALG_RSA_CRT, MULT_RSA_ENGINE_MAX_LENGTH_BITS); //xxxxx
             fnc_mult_keypair.genKeyPair();
             fnc_mult_pubkey_pow2 = (RSAPublicKey) fnc_mult_keypair.getPublic();
             //mult_privkey_pow2 = (RSAPrivateCrtKey) mult_keypair.getPrivate();
@@ -2192,24 +2193,24 @@ public class jcmathlib {
          * The size of speedup engine used for fast modulo exponent computation
          * (must be larger than biggest Bignat used)
          */
-        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 2049;
+        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 2048;
         /**
          * The size of speedup engine used for fast multiplication of large numbers
          * Must be larger than 2x biggest Bignat used
          */
-        public short MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 4097;
+        public short MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 2048;
         /**
          * The size of largest integer used in computations
          */
-        public short MAX_BIGNAT_SIZE = 64; //(short) ((MODULO_RSA_ENGINE_MAX_LENGTH_BITS / 8) + 1);
+        public short MAX_BIGNAT_SIZE = (short) 256; // ((MODULO_RSA_ENGINE_MAX_LENGTH_BITS / 8) + 1);
         /**
          * The size of largest ECC point used
          */
-        public short MAX_POINT_SIZE = (short) 64;
+        public short MAX_POINT_SIZE = (short) 2;
         /**
          * The size of single coordinate of the largest ECC point used 
          */
-        public short MAX_COORD_SIZE = (short) 32; // MAX_POINT_SIZE / 2
+        public short MAX_COORD_SIZE = (short) 1; // MAX_POINT_SIZE / 2
         
         
         public ResourceManager rm = null;
@@ -2269,7 +2270,7 @@ public class jcmathlib {
         public void setECC256Config() {
             reset();
             //MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 512;
-            //MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 768;        
+            //MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 768;
             //MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 1024;  // MPC Sign needs bigger array
             //MAX_POINT_SIZE = (short) 64;
             computeDerivedLengths();
