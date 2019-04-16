@@ -52,7 +52,7 @@ public class SimpleAPDU {
     private static final short CLIENT_KEY_BYTE_LENGTH = 256;
 
     private static final boolean realCard = true;
-    private static final boolean testing = true;
+    private static final boolean debug = false;
 
     private static String APPLET_AID = "0102030405060708090102";
     private static byte[] APPLET_AID_BYTE = Util.hexStringToByteArray(APPLET_AID);
@@ -66,7 +66,7 @@ public class SimpleAPDU {
 
     private static final CommandAPDU APDU_TEST = new CommandAPDU(RSA_SMPC_CLIENT, TEST, 0x0, 0x0);
 
-    private static final CardManager cardMgr = new CardManager(APPLET_AID_BYTE, realCard && !testing);
+    private static final CardManager cardMgr = new CardManager(APPLET_AID_BYTE, debug);
 
     public SimpleAPDU() throws Exception {
         final RunConfig runCfg = RunConfig.getDefaultConfig();
@@ -80,12 +80,14 @@ public class SimpleAPDU {
                     .setInstallData(new byte[8]);
         }
 
-        System.out.print("Connecting to card...");
+        if (cardMgr.isbDebug())
+            System.out.print("Connecting to card...");
         if (!cardMgr.Connect(runCfg)) {
             System.out.println(" Fail.");
             return;
         }
-        System.out.println(" Done.");
+        if (cardMgr.isbDebug())
+            System.out.println(" Done.");
     }
 
     private void setNumber(ArrayList<CommandAPDU> cmds, byte[] num, byte ins, byte p1) {
@@ -128,8 +130,8 @@ public class SimpleAPDU {
         try (OutputStream out = new FileOutputStream("for_server.key")) {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
 
-            writer.write(String.format("%s%s%s%s", Util.toHex(Util.trimLeadingZeroes(dServer.getData())),
-                    System.lineSeparator(), Util.toHex(Util.trimLeadingZeroes(n.getData())), System.lineSeparator()));
+            writer.write(String.format("%s%n%s%n", Util.toHex(Util.trimLeadingZeroes(dServer.getData())),
+                    Util.toHex(Util.trimLeadingZeroes(n.getData()))));
 
             writer.flush();
         }
@@ -160,8 +162,7 @@ public class SimpleAPDU {
             try (InputStream in = new FileInputStream("message.txt")) {
                 writer.write(new BufferedReader(new InputStreamReader(in)).readLine());
             }
-            writer.write(String.format("%s%s%s", System.lineSeparator(),
-                    Util.toHex(Util.trimLeadingZeroes(response.getData())), System.lineSeparator()));
+            writer.write(String.format("%n%s%n", Util.toHex(Util.trimLeadingZeroes(response.getData()))));
             writer.flush();
         }
 

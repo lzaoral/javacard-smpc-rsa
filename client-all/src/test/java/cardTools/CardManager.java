@@ -66,7 +66,9 @@ public class CardManager {
 
     public CardChannel ConnectPhysicalCard(int targetReaderIndex) throws Exception {
         // JCOP Simulators
-        System.out.print("Looking for physical cards... ");
+        if (bDebug)
+            System.out.print("Looking for physical cards... ");
+
         return connectToCardByTerminalFactory(TerminalFactory.getDefault(), targetReaderIndex);
     }
 
@@ -105,28 +107,36 @@ public class CardManager {
                     card_found = true;
                 }
             }
-            System.out.println("Success.");
+
+            if (bDebug)
+                System.out.println("Success.");
         } catch (Exception e) {
             System.out.println("Failed.");
         }
 
         if (card_found) {
-            System.out.println("Cards found: " + terminals);
+            if (bDebug)
+                System.out.println("Cards found: " + terminals);
 
             terminal = terminals.get(targetReaderIndex); // Prioritize physical card over simulations
 
-            System.out.print("Connecting...");
+            if (bDebug)
+                System.out.print("Connecting...");
             card = terminal.connect("*"); // Connect with the card
 
-            System.out.println(" Done.");
+            if (bDebug) {
+                System.out.println(" Done.");
+                System.out.print("Establishing channel...");
+            }
 
-            System.out.print("Establishing channel...");
             channel = card.getBasicChannel();
 
-            System.out.println(" Done.");
+            if (bDebug)
+                System.out.println(" Done.");
 
             // Select applet (mpcapplet)
-            System.out.println("Smartcard: Selecting applet...");
+            if (bDebug)
+                System.out.println("Smartcard: Selecting applet...");
 
             CommandAPDU cmd = new CommandAPDU(0x00, 0xa4, 0x04, 0x00, appletId);
             ResponseAPDU response = transmit(cmd);
@@ -145,7 +155,7 @@ public class CardManager {
             throws CardException {
 
         lastCommand = cmd;
-        if (bDebug == true) {
+        if (bDebug) {
             log(cmd);
         }
 
@@ -154,7 +164,7 @@ public class CardManager {
         elapsed += System.currentTimeMillis();
         lastTransmitTime = elapsed;
 
-        if (bDebug == true) {
+        if (bDebug) {
             log(response, lastTransmitTime);
         }
 

@@ -1,21 +1,17 @@
 package tests;
 
-import cardTools.Util;
-import org.junit.Assert;
-import org.testng.annotations.*;
 
-import javax.crypto.Cipher;
+import org.junit.Assert;
+
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
 import javax.smartcardio.ResponseAPDU;
-import java.io.*;
-import java.math.BigInteger;
-import java.security.KeyFactory;
-import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
+import java.io.OutputStream;
 import java.security.Security;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import java.security.spec.RSAPrivateKeySpec;
-import java.util.Arrays;
 
 /**
  * Example test class for the applet
@@ -25,7 +21,7 @@ import java.util.Arrays;
  */
 public class AppletTest {
 
-    private static final int TEST_COUNT = 1000;
+    private static final int TEST_COUNT = 200;
 
     public AppletTest() {
     }
@@ -46,9 +42,8 @@ public class AppletTest {
     public void tearDownMethod() throws Exception {
     }
 
-
     @Test
-    public void simpleSign() throws Exception {
+    public void signSimple() throws Exception {
         SimpleAPDU simpleAPDU = new SimpleAPDU();
 
         ResponseAPDU responseAPDU = simpleAPDU.generateKeys();
@@ -66,7 +61,8 @@ public class AppletTest {
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 
         for (int i = 1; i <= TEST_COUNT; i++) {
-            System.out.print("TEST" + i +": ");
+            System.out.printf("TEST %d: ", i);
+            System.out.flush();
 
             SimpleAPDU simpleAPDU = new SimpleAPDU();
             ResponseAPDU responseAPDU = simpleAPDU.generateKeys();
@@ -79,11 +75,8 @@ public class AppletTest {
             Assert.assertNotNull(responseAPDU);
             Assert.assertEquals(0x9000, responseAPDU.getSW());
 
-            ProcessBuilder server = new ProcessBuilder("./main_server");
-            server.redirectError(ProcessBuilder.Redirect.INHERIT);
-            //server.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-
-            Process serverProc = server.start();
+            Process serverProc = new ProcessBuilder("./main_server")
+                    .redirectError(ProcessBuilder.Redirect.INHERIT).start();
 
             try (OutputStream stdin = serverProc.getOutputStream()) {
                 stdin.write("1\ny\n2\n0\n".getBytes());
@@ -91,6 +84,7 @@ public class AppletTest {
             }
 
             serverProc.waitFor();
+            System.err.flush();
             System.out.println(serverProc.exitValue() == 0 ? "OK" : "NOK");
         }
     }

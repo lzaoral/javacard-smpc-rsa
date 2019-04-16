@@ -16,8 +16,6 @@ import javacard.security.RandomData;
 
 import javacardx.crypto.Cipher;
 
-import javax.print.attribute.standard.MediaSize;
-
 public class RSAClient extends Applet implements MultiSelectable {
     private static final byte RSA_SMPC_CLIENT = 0x1C;
 
