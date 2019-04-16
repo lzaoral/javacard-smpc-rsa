@@ -1,6 +1,5 @@
 package applet;
 
-import com.sun.imageio.plugins.jpeg.JPEG;
 import javacard.framework.*;
 import javacard.security.*;
 import javacardx.crypto.*;

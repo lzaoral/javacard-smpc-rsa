@@ -51,7 +51,8 @@ public class SimpleAPDU {
 
     private static final short CLIENT_KEY_BYTE_LENGTH = 256;
 
-    private static final boolean realCard = false;
+    private static final boolean realCard = true;
+    private static final boolean testing = true;
 
     private static String APPLET_AID = "0102030405060708090102";
     private static byte[] APPLET_AID_BYTE = Util.hexStringToByteArray(APPLET_AID);
@@ -65,7 +66,7 @@ public class SimpleAPDU {
 
     private static final CommandAPDU APDU_TEST = new CommandAPDU(RSA_SMPC_CLIENT, TEST, 0x0, 0x0);
 
-    private static final CardManager cardMgr = new CardManager(APPLET_AID_BYTE);
+    private static final CardManager cardMgr = new CardManager(APPLET_AID_BYTE, realCard && !testing);
 
     public SimpleAPDU() throws Exception {
         final RunConfig runCfg = RunConfig.getDefaultConfig();
@@ -121,14 +122,14 @@ public class SimpleAPDU {
     }
 
     public void getKeys() throws Exception {
-        ResponseAPDU n = cardMgr.transmit(APDU_GET_N);
         ResponseAPDU dServer = cardMgr.transmit(APDU_GET_D_SERVER);
+        ResponseAPDU n = cardMgr.transmit(APDU_GET_N);
 
         try (OutputStream out = new FileOutputStream("for_server.key")) {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
 
-            writer.write(String.format("%s%s%s%s", System.lineSeparator(), Util.toHex(Util.trimLeadingZeroes(n.getData())),
-                    System.lineSeparator(), Util.toHex(Util.trimLeadingZeroes(dServer.getData()))));
+            writer.write(String.format("%s%s%s%s", Util.toHex(Util.trimLeadingZeroes(dServer.getData())),
+                    System.lineSeparator(), Util.toHex(Util.trimLeadingZeroes(n.getData())), System.lineSeparator()));
 
             writer.flush();
         }
@@ -163,14 +164,6 @@ public class SimpleAPDU {
                     Util.toHex(Util.trimLeadingZeroes(response.getData())), System.lineSeparator()));
             writer.flush();
         }
-
-        return response;
-    }
-
-    public ResponseAPDU test() throws Exception {
-        // TODO
-        final ResponseAPDU response = cardMgr.getChannel().transmit(APDU_TEST);
-        System.out.println(response);
 
         return response;
     }

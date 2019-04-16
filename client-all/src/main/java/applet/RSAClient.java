@@ -16,6 +16,8 @@ import javacard.security.RandomData;
 
 import javacardx.crypto.Cipher;
 
+import javax.print.attribute.standard.MediaSize;
+
 public class RSAClient extends Applet implements MultiSelectable {
     private static final byte RSA_SMPC_CLIENT = 0x1C;
 
@@ -49,6 +51,9 @@ public class RSAClient extends Applet implements MultiSelectable {
 
     private static boolean messageSet = false;
 
+    private static boolean nSent = false;
+    private static boolean dServerSent = false;
+
     private final RandomData rng;
     private final Cipher rsa;
     private final KeyPair rsaPair;
@@ -61,7 +66,7 @@ public class RSAClient extends Applet implements MultiSelectable {
 
     public RSAClient(byte[] buffer, short offset, byte length) {
         N = new byte[ARR_LEN];
-        DClient = new byte[ARR_LEN];
+        DClient = new byte[ARR_LEN - 1];
         DServer = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
 
         MSG = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
@@ -155,6 +160,8 @@ public class RSAClient extends Applet implements MultiSelectable {
         privateKey.setExponent(DClient, (short) 0, (short) DClient.length);
 
         generatedKeys = true;
+        nSent = false;
+        dServerSent = false;
     }
 
     private void sendNum(byte[] num,  APDU apdu) {
@@ -173,11 +180,19 @@ public class RSAClient extends Applet implements MultiSelectable {
 
         switch (apduBuffer[ISO7816.OFFSET_P1]) {
             case GET_N:
+                if (nSent)
+                    ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+
                 sendNum(N, apdu);
+                nSent = true;
                 break;
 
             case GET_D_SERVER:
+                if (dServerSent)
+                    ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+
                 sendNum(DServer, apdu);
+                dServerSent = true;
                 break;
 
             default:
@@ -191,7 +206,7 @@ public class RSAClient extends Applet implements MultiSelectable {
         if (apduBuffer[ISO7816.OFFSET_P1] != 0)
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        short lc = (short) ((short) apduBuffer[ISO7816.OFFSET_LC] & 0xFF);
+        short lc = (short) ((short) apduBuffer[ISO7816.OFFSET_LC] & digit_mask);
         byte p2 = apduBuffer[ISO7816.OFFSET_P2];
 
         if (p2 > 0x01)
