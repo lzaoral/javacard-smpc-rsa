@@ -29,40 +29,36 @@ import java.util.Arrays;
  * @author Petr Svenda, Dusan Klinec (ph4r05)
  */
 public class SimpleAPDU {
-    private static final byte RSA_SMPC_CLIENT = 0x1C;
+    public static final byte RSA_SMPC_CLIENT = 0x00;
 
-    private static final byte NONE = 0x00;
+    public static final byte NONE = 0x00;
 
-    private static final byte SET_KEYS = 0x10;
-    private static final byte SET_D = 0x00;
-    private static final byte SET_N = 0x01;
+    public static final byte SET_KEYS = 0x10;
+    public static final byte SET_D = 0x00;
+    public static final byte SET_N = 0x01;
 
-    private static final byte SET_MESSAGE = 0x11;
+    public static final byte SET_MESSAGE = 0x12;
+    public static final byte RESET = 0x14;
 
-    private static final byte PART_0 = 0x00;
-    private static final byte PART_1 = 0x01;
+    public static final byte MULTI_PART = 0x10;
 
-    private static final byte SIGNATURE = 0x20;
+    public static final byte PART_0 = 0x00;
+    public static final byte PART_1 = 0x01;
 
-    private static final byte TEST = 0x30;
-
+    public static final byte SIGNATURE = 0x16;
 
     private static final short CLIENT_KEY_BYTE_LENGTH = 256;
-
-    private static final boolean realCard = true;
 
     private static String APPLET_AID = "0102030405060708090102";
     private static byte[] APPLET_AID_BYTE = Util.hexStringToByteArray(APPLET_AID);
 
-    private static final ArrayList<CommandAPDU> APDU_SET_N = new ArrayList<>();
-    private static final ArrayList<CommandAPDU> APDU_SET_D = new ArrayList<>();
-    private static final ArrayList<CommandAPDU> APDU_MESSAGE = new ArrayList<>();
-
-    private static final CommandAPDU APDU_TEST = new CommandAPDU(RSA_SMPC_CLIENT, TEST, NONE, NONE);
+    private final ArrayList<CommandAPDU> APDU_SET_N = new ArrayList<>();
+    private final ArrayList<CommandAPDU> APDU_SET_D = new ArrayList<>();
+    private final ArrayList<CommandAPDU> APDU_MESSAGE = new ArrayList<>();
 
     private static final CardManager cardMgr = new CardManager(APPLET_AID_BYTE);
 
-    public SimpleAPDU() throws Exception {
+    public SimpleAPDU(boolean realCard) throws Exception {
         try (InputStream in = new FileInputStream("client_card.key")) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
@@ -123,7 +119,7 @@ public class SimpleAPDU {
         }
 
         for (int i = num.length; i > 0; i -= 0xFF) {
-            cmds.add(new CommandAPDU(RSA_SMPC_CLIENT, ins, p1, i / 0xFF > 0 ? PART_0 : PART_1,
+            cmds.add(new CommandAPDU(RSA_SMPC_CLIENT, ins, p1 , (i / 0xFF > 0 ? PART_0 : PART_1) | MULTI_PART,
                     Arrays.copyOfRange(num, i - 0xFF > 0 ? i - 0xFF : 0, i)));
         }
     }
@@ -135,12 +131,15 @@ public class SimpleAPDU {
      */
     public static void main(String[] args) {
         try {
-            SimpleAPDU simpleAPDU = new SimpleAPDU();
+            SimpleAPDU simpleAPDU = new SimpleAPDU(true);
             simpleAPDU.setKeys();
-            //simpleAPDU.test();
         } catch (Exception ex) {
             System.out.println("Exception : " + ex);
         }
+    }
+
+    public ResponseAPDU transmit(CommandAPDU cmd) throws Exception {
+        return cardMgr.transmit(cmd);
     }
 
     public void setKeys() throws Exception {
@@ -149,12 +148,12 @@ public class SimpleAPDU {
 
         for (CommandAPDU cmd : APDU_SET_N)
             cardMgr.transmit(cmd);
-
-        for (CommandAPDU cmd : APDU_MESSAGE)
-            cardMgr.transmit(cmd);
     }
 
     public ResponseAPDU signMessage() throws Exception {
+        for (CommandAPDU cmd : APDU_MESSAGE)
+            cardMgr.transmit(cmd);
+
         ResponseAPDU response = cardMgr.transmit(new CommandAPDU(RSA_SMPC_CLIENT, SIGNATURE, NONE, NONE,
                 CLIENT_KEY_BYTE_LENGTH));
 
@@ -163,16 +162,11 @@ public class SimpleAPDU {
             try (InputStream in = new FileInputStream("message.txt")) {
                 writer.write(new BufferedReader(new InputStreamReader(in)).readLine());
             }
-            writer.write(String.format("%s%s%s", System.lineSeparator(),
-                    Util.toHex(Util.trimLeadingZeroes(response.getData())), System.lineSeparator()));
+            writer.write(String.format("%n%s%n", Util.toHex(Util.trimLeadingZeroes(response.getData()))));
             writer.flush();
         }
 
         return response;
-    }
-
-    public ResponseAPDU test() throws Exception {
-        return cardMgr.transmit(APDU_TEST);
     }
 
 }
