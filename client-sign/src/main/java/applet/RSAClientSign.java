@@ -13,21 +13,18 @@ public class RSAClientSign extends Applet implements MultiSelectable {
 
     private static final byte SET_MESSAGE = 0x11;
 
+    private static final byte RESET_KEYS = 0x15;
+
     private static final byte SIGNATURE = 0x20;
 
     private static final short ARR_LEN = 256;
 
-    private final byte[] D;
-    private final byte[] N;
-    private final byte[] MSG;
-    private final byte[] SGN;
+    private final byte[] tmpBuffer;
 
     private final Cipher rsa;
     private final RSAPrivateKey key;
 
-
     private static byte[] keyStatus;
-    private static boolean generatedKeys = false;
     private static boolean messageSet = false;
 
     public static void install(byte[] bArray, short bOffset, byte bLength) {
@@ -35,16 +32,12 @@ public class RSAClientSign extends Applet implements MultiSelectable {
     }
 
     public RSAClientSign(byte[] buffer, short offset, byte length) {
-        D = new byte[ARR_LEN];
-        N = new byte[ARR_LEN];
-
-        MSG = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
-        SGN = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
+        tmpBuffer = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
 
         key = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, KeyBuilder.LENGTH_RSA_2048, false);
         rsa = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
 
-        keyStatus = JCSystem.makeTransientByteArray((short) 2, JCSystem.CLEAR_ON_RESET);
+        keyStatus = new byte[2];
 
         register();
     }
@@ -63,6 +56,10 @@ public class RSAClientSign extends Applet implements MultiSelectable {
                 setRSAKeys(apdu);
                 break;
 
+            case RESET_KEYS:
+                key.clearKey();
+                break;
+
             case SET_MESSAGE:
                 setMessage(apdu);
                 break;
@@ -76,7 +73,11 @@ public class RSAClientSign extends Applet implements MultiSelectable {
         }
     }
 
-    private void setNumber(APDU apdu, byte[] num) {
+    private void clearByteArray(byte[] arr) {
+        Util.arrayFillNonAtomic(arr, (short) 0, (short) arr.length, (byte) 0);
+    }
+
+    private void setNumber(APDU apdu) {
         byte[] apduBuffer = apdu.getBuffer();
         short lc = (short) ((short) apduBuffer[ISO7816.OFFSET_LC] & 0xFF);
         byte p2 = apduBuffer[ISO7816.OFFSET_P2];
@@ -85,43 +86,67 @@ public class RSAClientSign extends Applet implements MultiSelectable {
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
         short position = (short) (ARR_LEN - (p2 * 0xFF + lc));
-        Util.arrayCopyNonAtomic(apduBuffer, ISO7816.OFFSET_CDATA, num, position, lc);
+        Util.arrayCopyNonAtomic(apduBuffer, ISO7816.OFFSET_CDATA, tmpBuffer, position, lc);
+    }
+
+    private void updateKey(byte index) {
+        if (index != SET_D && index != SET_N)
+            ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+
+        ++keyStatus[index];
+        if (keyStatus[index] != 2)
+            return;
+
+        if (index == SET_D)
+            key.setExponent(tmpBuffer, (short) 0, (short) tmpBuffer.length);
+        else
+            key.setModulus(tmpBuffer, (short) 0, (short) tmpBuffer.length);
+
+        clearByteArray(tmpBuffer);
     }
 
     private void setRSAKeys(APDU apdu) {
-        // TODO: reset behavior?
+        if (key.isInitialized())
+            ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         byte[] apduBuffer = apdu.getBuffer();
         short p1 = apduBuffer[ISO7816.OFFSET_P1];
 
         switch (p1) {
             case SET_D:
-                setNumber(apdu, D);
+                if (keyStatus[SET_D] == 2)
+                    ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+
+                setNumber(apdu);
+                updateKey(SET_D);
                 break;
 
             case SET_N:
-                setNumber(apdu, N);
+                if (keyStatus[SET_D] != 2 && keyStatus[SET_N] == 2)
+                    ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+
+                setNumber(apdu);
+                updateKey(SET_N);
                 break;
 
             default:
                 ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
         }
-
-        ++keyStatus[p1];
-        if (keyStatus[SET_D] == 2 && keyStatus[SET_N] == 2)
-            generatedKeys = true;
     }
 
     private void setMessage(APDU apdu) {
+        if (!key.isInitialized())
+            ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+
         if (apdu.getBuffer()[ISO7816.OFFSET_P1] != 0)
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        setNumber(apdu, MSG);
+        setNumber(apdu);
         messageSet = true;
     }
 
     private void signRSAMessage(APDU apdu) {
-        if (!generatedKeys || !messageSet)
+        if (!key.isInitialized() || !messageSet)
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         byte[] apduBuffer = apdu.getBuffer();
@@ -129,13 +154,12 @@ public class RSAClientSign extends Applet implements MultiSelectable {
         if (apduBuffer[ISO7816.OFFSET_P1] != 0x00 || apduBuffer[ISO7816.OFFSET_P2] != 0x00)
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        key.setModulus(N, (short) 0, ARR_LEN);
-        key.setExponent(D, (short) 0, ARR_LEN);
-
         rsa.init(key, Cipher.MODE_DECRYPT);
-        rsa.doFinal(MSG, (short) 0, (short) MSG.length, SGN, (short) 0);
+        rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, apduBuffer, (short) 0);
 
-        Util.arrayCopyNonAtomic(SGN, (short) 0, apduBuffer, (short) 0, ARR_LEN);
+        messageSet = false;
+        clearByteArray(tmpBuffer);
+
         apdu.setOutgoingAndSend((short) 0, ARR_LEN);
     }
 
