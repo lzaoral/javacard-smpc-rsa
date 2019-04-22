@@ -140,12 +140,12 @@ public class CardManager {
             return null;
         }
     }
-    
+
     public ResponseAPDU transmit(CommandAPDU cmd)
             throws CardException {
 
         lastCommand = cmd;
-        if (bDebug == true) {
+        if (bDebug) {
             log(cmd);
         }
 
@@ -154,7 +154,7 @@ public class CardManager {
         elapsed += System.currentTimeMillis();
         lastTransmitTime = elapsed;
 
-        if (bDebug == true) {
+        if (bDebug) {
             log(response, lastTransmitTime);
         }
 
