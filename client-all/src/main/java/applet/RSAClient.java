@@ -5,7 +5,6 @@ import javacard.framework.Applet;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
-import javacard.framework.MultiSelectable;
 import javacard.framework.Util;
 
 import javacard.security.KeyBuilder;
@@ -16,7 +15,7 @@ import javacard.security.RandomData;
 
 import javacardx.crypto.Cipher;
 
-public class RSAClient extends Applet implements MultiSelectable {
+public class RSAClient extends Applet {
     private static final byte RSA_SMPC_CLIENT = 0x1C;
 
     private static final byte GENERATE_KEYS = 0x10;
@@ -28,24 +27,16 @@ public class RSAClient extends Applet implements MultiSelectable {
 
     private static final byte SIGNATURE = 0x20;
 
-    private static final byte TEST = 0x30;
-
-    private static boolean generatedKeys = false;
     private static final short ARR_LEN = 256;
 
     // from JCMathLib
-    public static final short digit_mask = 0xff;
-    public static final short digit_len = 8;
+    public static final short digitMask = 0xff;
+    public static final short digitLen = 8;
 
     // E = 65537
     private final static byte[] E = new byte[]{0x01, 0x00, 0x01};
 
-    private final byte[] N;
-    private final byte[] DClient;
-    private final byte[] DServer;
-
-    private final byte[] MSG;
-    private final byte[] SGN;
+    private final byte[] tmpBuffer;
 
     private static boolean messageSet = false;
 
@@ -58,17 +49,27 @@ public class RSAClient extends Applet implements MultiSelectable {
     private final RSAPrivateKey privateKey;
     private final RSAPublicKey publicKey;
 
+    // TODO: d_server ARR_LEN - 1
+    // MODULUS AND D SERVER CAN BE GET ONLY ONCE
+
+    /**
+     *
+     * @param bArray
+     * @param bOffset
+     * @param bLength
+     */
     public static void install(byte[] bArray, short bOffset, byte bLength) {
         new RSAClient(bArray, bOffset, bLength);
     }
 
+    /**
+     *
+     * @param buffer
+     * @param offset
+     * @param length
+     */
     public RSAClient(byte[] buffer, short offset, byte length) {
-        N = new byte[ARR_LEN];
-        DClient = new byte[ARR_LEN - 1];
-        DServer = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
-
-        MSG = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
-        SGN = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
+        tmpBuffer = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
 
         rng = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
         rsa = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
@@ -80,6 +81,10 @@ public class RSAClient extends Applet implements MultiSelectable {
         register();
     }
 
+    /**
+     *
+     * @param apdu
+     */
     public void process(APDU apdu) {
         if (selectingApplet())
             return;
@@ -107,22 +112,28 @@ public class RSAClient extends Applet implements MultiSelectable {
                 break;
 
             default:
-                ISOException.throwIt(ISO7816.SW_UNKNOWN);
+                ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
         }
     }
 
     // JCMathLib
+
+    /**
+     *
+     * @param a
+     * @param b
+     */
     public void subtract(byte[] a, byte[] b) {
         short akku = 0;
         short subtraction_result;
         short i = (short) (a.length - 1);
         short j = (short) (b.length - 1);
         for (; i >= 0 && j >= 0; i--, j--) {
-            akku = (short) (akku + (short) (b[j] & digit_mask));
-            subtraction_result = (short) ((a[i] & digit_mask) - (akku & digit_mask));
+            akku = (short) (akku + (short) (b[j] & digitMask));
+            subtraction_result = (short) ((a[i] & digitMask) - (akku & digitMask));
 
-            a[i] = (byte) (subtraction_result & digit_mask);
-            akku = (short) ((akku >> digit_len) & digit_mask);
+            a[i] = (byte) (subtraction_result & digitMask);
+            akku = (short) ((akku >> digitLen) & digitMask);
             if (subtraction_result < 0) {
                 akku++;
             }
@@ -130,9 +141,9 @@ public class RSAClient extends Applet implements MultiSelectable {
 
         // deal with carry as long as there are digits left in this
         while (i >= 0 && akku != 0) {
-            subtraction_result = (short) ((a[i] & digit_mask) - (akku & digit_mask));
-            a[i] = (byte) (subtraction_result & digit_mask);
-            akku = (short) ((akku >> digit_len) & digit_mask);
+            subtraction_result = (short) ((a[i] & digitMask) - (akku & digitMask));
+            a[i] = (byte) (subtraction_result & digitMask);
+            akku = (short) ((akku >> digitLen) & digitMask);
             if (subtraction_result < 0) {
                 akku++;
             }
@@ -140,6 +151,10 @@ public class RSAClient extends Applet implements MultiSelectable {
         }
     }
 
+    /**
+     *
+     * @param apdu
+     */
     private void generateRSAKeys(APDU apdu) {
         byte[] apduBuffer = apdu.getBuffer();
 
@@ -149,26 +164,34 @@ public class RSAClient extends Applet implements MultiSelectable {
         publicKey.setExponent(E, (short) 0, (short) E.length);
         rsaPair.genKeyPair();
 
-        privateKey.getModulus(N, (short) 0);
-        privateKey.getExponent(DServer, (short) 0);
+        privateKey.getExponent(tmpBuffer, (short) 0);
 
+        // TODO: zitra ja taky den, dpc
         rng.generateData(DClient, (short) 0, (short) DClient.length);
         subtract(DServer, DClient);
 
         privateKey.setExponent(DClient, (short) 0, (short) DClient.length);
 
-        generatedKeys = true;
         nSent = false;
         dServerSent = false;
     }
 
+    /**
+     *
+     * @param num
+     * @param apdu
+     */
     private void sendNum(byte[] num,  APDU apdu) {
         Util.arrayCopyNonAtomic(num, (short) 0, apdu.getBuffer(), (short) 0, ARR_LEN);
         apdu.setOutgoingAndSend((short) 0, ARR_LEN);
     }
 
+    /**
+     *
+     * @param apdu
+     */
     private void getRSAKeys(APDU apdu) {
-        if (!generatedKeys)
+        if (!privateKey.isInitialized())
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         byte[] apduBuffer = apdu.getBuffer();
@@ -198,13 +221,17 @@ public class RSAClient extends Applet implements MultiSelectable {
         }
     }
 
+    /**
+     *
+     * @param apdu
+     */
     private void setMessage(APDU apdu) {
         byte[] apduBuffer = apdu.getBuffer();
 
         if (apduBuffer[ISO7816.OFFSET_P1] != 0)
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        short lc = (short) ((short) apduBuffer[ISO7816.OFFSET_LC] & digit_mask);
+        short lc = (short) ((short) apduBuffer[ISO7816.OFFSET_LC] & digitMask);
         byte p2 = apduBuffer[ISO7816.OFFSET_P2];
 
         if (p2 > 0x01)
@@ -216,8 +243,12 @@ public class RSAClient extends Applet implements MultiSelectable {
         messageSet = true;
     }
 
+    /**
+     *
+     * @param apdu
+     */
     private void signRSAMessage(APDU apdu) {
-        if (!generatedKeys || !messageSet)
+        if (!privateKey.isInitialized() || !messageSet)
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         byte[] apduBuffer = apdu.getBuffer();
@@ -226,17 +257,10 @@ public class RSAClient extends Applet implements MultiSelectable {
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
         rsa.init(privateKey, Cipher.MODE_DECRYPT);
-        rsa.doFinal(MSG, (short) 0, (short) MSG.length, SGN, (short) 0);
+        rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, apduBuffer, (short) 0);
 
-        Util.arrayCopyNonAtomic(SGN, (short) 0, apduBuffer, (short) 0, ARR_LEN);
+        messageSet = false;
         apdu.setOutgoingAndSend((short) 0, ARR_LEN);
     }
 
-    public boolean select(boolean b) {
-        return true;
-    }
-
-    public void deselect(boolean b) {
-
-    }
 }
