@@ -17,10 +17,10 @@ import javacardx.crypto.Cipher;
  * used solely for the purpose of signing. RSA keys must be
  * provided by the user prior to other use.
  *
- * It is recommeded to use the provided jar with CardManager
+ * It is recommended to use the provided jar with CardManager
  * to send commands to given card (or emulator).
  *
- * @author Lukáš Zaoral
+ * @author Lukas Zaoral
  */
 public class RSAClientSign extends Applet {
 
@@ -37,26 +37,26 @@ public class RSAClientSign extends Applet {
     /**
      * P1 parameters of the INS_SET_KEYS instruction
      */
-    private static final byte P1_SET_D = 0x00;
+    private static final byte P1_SET_D1_CLIENT = 0x00;
     private static final byte P1_SET_N = 0x01;
 
     /**
-     * P2 parameters of sent keys and messages
+     * P2 parameters of received keys and messages
      *
-     * Part is only combined with divided data.
+     * Part is only combined with divided data into one byte.
      */
     private static final byte P2_PART_0 = 0x00;
     private static final byte P2_PART_1 = 0x01;
     private static final byte P2_SINGLE = 0x00;
     private static final byte P2_DIVIDED = 0x10;
 
+    /**
+     * Helper constants
+     */
     private static final short ARR_LEN = 256;
     private static final short MAX_APDU_LENGTH = 0xFF;
 
     private final byte[] tmpBuffer;
-
-    private final Cipher rsa;
-    private final RSAPrivateKey privateKey;
 
     /**
      * Variables holding the state of set keys and messages
@@ -66,9 +66,15 @@ public class RSAClientSign extends Applet {
     private byte messageSet = 0x00;
 
     /**
+     * RSA objects
+     */
+    private final Cipher rsa;
+    private final RSAPrivateKey privateKey;
+
+    /**
      * Creates the instance of this Applet. Used by the JavaCard runtime itself.
      *
-     * Installation parameter
+     * Installation parameters
      * @param bArray bArray
      * @param bOffset bOffset
      * @param bLength bLength
@@ -77,7 +83,15 @@ public class RSAClientSign extends Applet {
         new RSAClientSign(bArray, bOffset, bLength);
     }
 
-    public RSAClientSign(byte[] buffer, short offset, byte length) {
+    /**
+     * Constructor of {@link RSAClientSign} class. Allocates and created all used objects.
+     *
+     * Installation parameters
+     * @param bArray bArray
+     * @param bOffset bOffset
+     * @param bLength bLength
+     */
+    public RSAClientSign(byte[] bArray, short bOffset, byte bLength) {
         tmpBuffer = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
         privateKey = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE,
                     KeyBuilder.LENGTH_RSA_2048, false);
@@ -147,8 +161,8 @@ public class RSAClientSign extends Applet {
 
         byte[] apduBuffer = apdu.getBuffer();
         switch (apduBuffer[ISO7816.OFFSET_P1]) {
-            case P1_SET_D:
-                if (keyStatus[P1_SET_D] == KEY_LOADED)
+            case P1_SET_D1_CLIENT:
+                if (keyStatus[P1_SET_D1_CLIENT] == KEY_LOADED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
                 setNumber(apdu);
@@ -156,7 +170,7 @@ public class RSAClientSign extends Applet {
                 break;
 
             case P1_SET_N:
-                if (keyStatus[P1_SET_D] != KEY_LOADED)
+                if (keyStatus[P1_SET_D1_CLIENT] != KEY_LOADED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
                 if (keyStatus[P1_SET_N] == KEY_LOADED)
@@ -180,7 +194,7 @@ public class RSAClientSign extends Applet {
      *         - 0x00 - no
      *         - 0x1X - yes
      *    - second nibble is the segment number, e.g.
-     *         - 0x10 - first part of divided datag.
+     *         - 0x10 - first part of divided data.
      *         - 0x11 - second part of divided data
      *
      * @param apdu object representing the communication between the card and the world
@@ -212,14 +226,14 @@ public class RSAClientSign extends Applet {
         byte p1 = apduBuffer[ISO7816.OFFSET_P1];
         byte p2 = apduBuffer[ISO7816.OFFSET_P2];
 
-        if (p1 != P1_SET_D && p1 != P1_SET_N)
+        if (p1 != P1_SET_D1_CLIENT && p1 != P1_SET_N)
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
         keyStatus[p1] = updateLoadState(keyStatus[p1], p2);
         if (keyStatus[p1] != KEY_LOADED)
             return;
 
-        if (p1 == P1_SET_D)
+        if (p1 == P1_SET_D1_CLIENT)
             privateKey.setExponent(tmpBuffer, (short) 0, (short) tmpBuffer.length);
         else
             privateKey.setModulus(tmpBuffer, (short) 0, (short) tmpBuffer.length);
@@ -264,13 +278,13 @@ public class RSAClientSign extends Applet {
     }
 
     /**
-     * Loads the message to the card memory. The method waits
-     * until all segments have been fully sent.
+     * Loads the message to the card memory by parts specified
+     * in the P2 argument.
      *
      * Upon calling, private exponent and modulus must be already set.
      *
-     * Any subsequent call zeroes the stored message and starts
-     * its loading from the scratch.
+     * After the mssage is set, any subsequent call zeroes the stored
+     * message and starts its loading from the scratch.
      *
      * @param apdu object representing the communication between the card and the world
      * @throws ISOException SW_CONDITIONS_NOT_SATISFIED if the keys have not yet

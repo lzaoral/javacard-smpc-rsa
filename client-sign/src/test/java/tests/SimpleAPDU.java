@@ -31,7 +31,7 @@ import java.util.Arrays;
  * @author Petr Svenda, Dusan Klinec (ph4r05), Lukas Zaoral
  */
 public class SimpleAPDU {
-    public static final byte CLA_RSA_SMPC_CLIENT = 0x00;
+    public static final byte CLA_RSA_SMPC_CLIENT_SIGN = 0x00;
 
     public static final byte INS_SET_KEYS = 0x10;
     public static final byte INS_SET_MESSAGE = 0x12;
@@ -126,13 +126,13 @@ public class SimpleAPDU {
      */
     private void setNumber(ArrayList<CommandAPDU> cmds, byte[] num, byte ins, byte p1) {
         if (num.length <= MAX_APDU_LENGTH) {
-            cmds.add(new CommandAPDU(CLA_RSA_SMPC_CLIENT, ins, p1, PART_0 | SINGLE_PART, num));
+            cmds.add(new CommandAPDU(CLA_RSA_SMPC_CLIENT_SIGN, ins, p1, PART_0 | SINGLE_PART, num));
             return;
         }
 
         for (int i = num.length; i > 0; i -= MAX_APDU_LENGTH) {
             cmds.add(new CommandAPDU(
-                    CLA_RSA_SMPC_CLIENT, ins, p1 , (i / MAX_APDU_LENGTH > 0 ? PART_0 : PART_1) | MULTI_PART,
+                    CLA_RSA_SMPC_CLIENT_SIGN, ins, p1 , (i / MAX_APDU_LENGTH > 0 ? PART_0 : PART_1) | MULTI_PART,
                     Arrays.copyOfRange(num, i - MAX_APDU_LENGTH > 0 ? i - MAX_APDU_LENGTH : 0, i)
             ));
         }
@@ -197,7 +197,7 @@ public class SimpleAPDU {
 
         transmitNumber(APDU_MESSAGE);
         ResponseAPDU response = cardMgr.transmit(
-            new CommandAPDU(CLA_RSA_SMPC_CLIENT, INS_SIGNATURE, NONE, NONE, CLIENT_ARR_LEN)
+            new CommandAPDU(CLA_RSA_SMPC_CLIENT_SIGN, INS_SIGNATURE, NONE, NONE, CLIENT_ARR_LEN)
         );
 
         try (OutputStream out = new FileOutputStream(CLIENT_SHARE_SIG_FILE)) {
