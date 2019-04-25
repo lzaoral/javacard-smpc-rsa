@@ -82,7 +82,7 @@ javacard {
             //noinspection GroovyAssignabilityCheck
             applet {
                 className 'applet.RSAClient'
-                aid '01:02:03:04:05:06:07:08:09:01:02'
+                aid '01:02:03:04:05:06:07:08:09:03:04'
             }
 
             //noinspection GroovyAssignabilityCheck

@@ -1,13 +1,15 @@
 package tests;
 
-import cardTools.Util;
 import javacard.framework.ISO7816;
-import org.junit.Assert;
-import org.testng.annotations.*;
-
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 
+import org.junit.Assert;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
+import cardTools.Util;
 import static tests.SimpleAPDU.*;
 
 /**
@@ -19,7 +21,7 @@ import static tests.SimpleAPDU.*;
 public class AppletTest {
 
     private static int SW_OK = 0x9000;
-    private static boolean realCard = true;
+    private static boolean realCard = false;
     private SimpleAPDU simpleAPDU;
 
     @BeforeClass
@@ -91,7 +93,7 @@ public class AppletTest {
     @Test
     public void setSingleD() throws Exception {
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -102,7 +104,7 @@ public class AppletTest {
     @Test
     public void setMultiD() throws Exception {
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, MULTI_PART | PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -110,7 +112,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D,MULTI_PART | PART_1, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -122,7 +124,7 @@ public class AppletTest {
     public void setSingleN() throws Exception {
         setSingleD();
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -134,7 +136,7 @@ public class AppletTest {
     public void setMultiN() throws Exception {
         setSingleD();
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, MULTI_PART | PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -142,7 +144,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, MULTI_PART | PART_1, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -154,7 +156,7 @@ public class AppletTest {
     public void resetSingleD() throws Exception {
         setSingleD();
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -166,7 +168,7 @@ public class AppletTest {
     public void resetMultiD() throws Exception {
         setMultiD();
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -177,7 +179,7 @@ public class AppletTest {
     @Test
     public void setNBeforeD() throws Exception {
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -190,7 +192,7 @@ public class AppletTest {
         setSingleN();
 
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -202,7 +204,7 @@ public class AppletTest {
     public void resetMultiN() throws Exception {
         setMultiN();
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -213,7 +215,7 @@ public class AppletTest {
     @Test
     public void setDMultiTwice() throws Exception {
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, MULTI_PART | PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -221,7 +223,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, MULTI_PART | PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -229,7 +231,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, MULTI_PART | PART_1, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -237,7 +239,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, MULTI_PART | PART_1, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -248,7 +250,7 @@ public class AppletTest {
     @Test
     public void setDMultiSwitched() throws Exception {
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, MULTI_PART | PART_1, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -256,7 +258,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, MULTI_PART | PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -268,7 +270,7 @@ public class AppletTest {
     public void setNMultiSwitched() throws Exception {
         setSingleD();
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, MULTI_PART | PART_1, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -276,7 +278,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, MULTI_PART | PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -289,7 +291,7 @@ public class AppletTest {
         setSingleD();
 
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, MULTI_PART | PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -297,7 +299,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, MULTI_PART | PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -305,7 +307,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, MULTI_PART | PART_1, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -313,7 +315,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, MULTI_PART | PART_1, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -326,7 +328,7 @@ public class AppletTest {
         setSingleD();
 
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, MULTI_PART | PART_1, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -334,7 +336,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, MULTI_PART | PART_1, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -342,7 +344,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, MULTI_PART | PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -350,7 +352,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, MULTI_PART | PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -361,7 +363,7 @@ public class AppletTest {
     @Test
     public void setKeys() throws Exception {
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, PART_0, new byte[]{(byte) 0xF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_PART_0, new byte[]{(byte) 0xF}
         ));
 
         Assert.assertNotNull(res);
@@ -369,7 +371,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -391,7 +393,7 @@ public class AppletTest {
     }
 
     @Test
-    public void resetKeys() throws Exception {
+    public void setKeysAfterReset() throws Exception {
         setKeys();
 
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
@@ -403,6 +405,17 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         setKeys();
+    }
+
+    @Test
+    public void resetCard() throws Exception {
+        ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_RESET, 0x00, 0x00
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
@@ -450,7 +463,7 @@ public class AppletTest {
     @Test
     public void setMessageNoKeys() throws Exception {
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -463,7 +476,7 @@ public class AppletTest {
         setKeys();
 
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -476,7 +489,7 @@ public class AppletTest {
         setKeys();
 
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_0, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -484,7 +497,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_1, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -497,7 +510,7 @@ public class AppletTest {
         setKeys();
 
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_0, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -505,7 +518,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_0, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -513,7 +526,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_1, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -521,7 +534,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_1, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -534,7 +547,7 @@ public class AppletTest {
         setKeys();
 
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_1, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -542,7 +555,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_1, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -550,7 +563,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_0, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -558,7 +571,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_0, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -571,7 +584,7 @@ public class AppletTest {
         setKeys();
 
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -579,7 +592,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -592,7 +605,7 @@ public class AppletTest {
         setKeys();
 
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_0, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -600,7 +613,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_1, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -608,7 +621,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_0, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -616,7 +629,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_1, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -629,7 +642,7 @@ public class AppletTest {
         setKeys();
 
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_1, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -637,7 +650,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_0, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -649,7 +662,7 @@ public class AppletTest {
     public void setMessageIncorrectP1() throws Exception {
         setKeys();
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x01, PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x01, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -657,7 +670,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, PART_1, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_PART_1, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -694,7 +707,7 @@ public class AppletTest {
         setKeys();
 
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
@@ -736,7 +749,7 @@ public class AppletTest {
         simpleAPDU.setKeys();
 
         ResponseAPDU res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_0, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -744,7 +757,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, MULTI_PART | PART_1, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
         ));
 
         Assert.assertNotNull(res);
@@ -752,7 +765,7 @@ public class AppletTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = simpleAPDU.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SIGNATURE, 0x00, 0x00, CLIENT_ARR_LEN
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SIGNATURE, 0x00, 0x00, CLIENT_ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);

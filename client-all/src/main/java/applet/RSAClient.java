@@ -32,15 +32,16 @@ public class RSAClient extends Applet {
      * Instruction codes
      */
     private static final byte INS_GENERATE_KEYS = 0x10;
-    private static final byte INS_SET_MESSAGE = 0x12;
-    private static final byte INS_GET_KEYS = 0x14;
-    private static final byte INS_SIGNATURE = 0x16;
+    private static final byte INS_GET_KEYS = 0x12;
+    private static final byte INS_SET_MESSAGE = 0x14;
+    private static final byte INS_RESET = 0x16;
+    private static final byte INS_SIGNATURE = 0x18;
 
     /**
      * P1 parameters of the INS_GET_KEYS instruction
      */
-    private static final byte GET_N = 0x00;
-    private static final byte GET_D1_SERVER = 0x01;
+    private static final byte P1_GET_N = 0x00;
+    private static final byte P1_GET_D1_SERVER = 0x01;
 
     /**
      * P2 parameters of received keys and messages
@@ -145,6 +146,10 @@ public class RSAClient extends Applet {
                 setMessage(apdu);
                 break;
 
+            case INS_RESET:
+                reset(apdu);
+                break;
+
             case INS_SIGNATURE:
                 signRSAMessage(apdu);
                 break;
@@ -181,7 +186,7 @@ public class RSAClient extends Applet {
         rng.generateData(tmpBuffer, (short) 1, (short) (tmpBuffer.length - 1));
         subtract(d1ServerBuffer, tmpBuffer);
 
-        privateKey.setExponent(tmpBuffer, (short) 0, (short) tmpBuffer.length);
+        privateKey.setExponent(tmpBuffer, (short) 1, (short) (tmpBuffer.length - 1));
 
         nSent = false;
         d1ServerSent = false;
@@ -199,22 +204,29 @@ public class RSAClient extends Applet {
         if (apduBuffer[ISO7816.OFFSET_P1] != 0x00 || apduBuffer[ISO7816.OFFSET_P2] != 0x00)
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        publicKey.isInitialized();
+        publicKey.clearKey();
         privateKey.clearKey();
+
         messageSet = 0x00;
+        nSent = false;
+        d1ServerSent = false;
+
         clearByteArray(d1ServerBuffer);
         clearByteArray(tmpBuffer);
     }
 
     /**
-     * Sends a key part selected by the P1 argument. The keys must generated first
-     * and can be retrieved only once.
+     * Sends a client modulus or server share of the client private exponent
+     * depending on the P1 argument. The keys must generated first and can
+     * be retrieved only once.
      *
      * @param apdu object representing the communication between the card and the world
      * @throws ISOException SW_CONDITIONS_NOT_SATISFIED the keys have not been
      *     initialised
-     * @throws ISOException SW_COMMAND_NOT_ALLOWED if the given has already
+     * @throws ISOException SW_COMMAND_NOT_ALLOWED if the given key part has already
      *     been retrieved
+     * @throws ISOException SW_WRONG_LENGTH if the retrieved modulus has got wrong
+     *     bit length
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void getRSAKeys(APDU apdu) {
@@ -227,16 +239,18 @@ public class RSAClient extends Applet {
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
         switch (apduBuffer[ISO7816.OFFSET_P1]) {
-            case GET_N:
+            case P1_GET_N:
                 if (nSent)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-                privateKey.getExponent(tmpBuffer, (short) 1);
+                if (privateKey.getModulus(tmpBuffer, (short) 0) != ARR_LEN)
+                    ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+
                 sendNum(tmpBuffer, apdu);
                 nSent = true;
                 break;
 
-            case GET_D1_SERVER:
+            case P1_GET_D1_SERVER:
                 if (d1ServerSent)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
@@ -268,7 +282,7 @@ public class RSAClient extends Applet {
      *
      * Upon calling, keys must be already generated.
      *
-     * After the mssage is set, any subsequent call zeroes the stored
+     * After the massage is set, any subsequent call zeroes the stored
      * message and starts its loading from the scratch.
      *
      * @param apdu object representing the communication between the card and the world
@@ -279,7 +293,7 @@ public class RSAClient extends Applet {
      *     is set more than once
      */
     private void setMessage(APDU apdu) {
-        if (!privateKey.isInitialized())
+        if (!nSent || !d1ServerSent)
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         if (apdu.getBuffer()[ISO7816.OFFSET_P1] != 0x00)
@@ -296,10 +310,9 @@ public class RSAClient extends Applet {
         if (p2 != P2_SINGLE && p2 != (P2_DIVIDED | P2_PART_0) && p2 != (P2_DIVIDED | P2_PART_1))
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        // get part number
-        p2 &= 0x0F;
         short lc = (short) (apduBuffer[ISO7816.OFFSET_LC] & MAX_APDU_LENGTH);
-        short position = (short) (ARR_LEN - (p2 * MAX_APDU_LENGTH + lc));
+        // get part number (p2 & 0x0F)
+        short position = (short) (ARR_LEN - ((p2 & 0x0F) * MAX_APDU_LENGTH + lc));
         Util.arrayCopyNonAtomic(apduBuffer, ISO7816.OFFSET_CDATA, tmpBuffer, position, lc);
 
         if (p2 == P2_SINGLE)
@@ -320,7 +333,7 @@ public class RSAClient extends Applet {
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void signRSAMessage(APDU apdu) {
-        if (!privateKey.isInitialized() || messageSet != MESSAGE_LOADED)
+        if (messageSet != MESSAGE_LOADED)
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         byte[] apduBuffer = apdu.getBuffer();
@@ -376,7 +389,7 @@ public class RSAClient extends Applet {
     }
 
     /**
-     * Helper method. Zeroes the given array.
+     * Zeroes the given array.
      *
      * @param arr array to be zeroed
      */

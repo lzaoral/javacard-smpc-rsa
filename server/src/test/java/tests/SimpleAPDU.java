@@ -28,7 +28,7 @@ public class SimpleAPDU {
     private static final short CLIENT_KEY_BYTE_LENGTH = 256;
 
 
-    private static String APPLET_AID = "482871d58ab7465e5e05";
+    private static String APPLET_AID = "0102030405060708090304";
     private static byte[] APPLET_AID_BYTE = Util.hexStringToByteArray(APPLET_AID);
 
     private static final int E = 65537;

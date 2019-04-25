@@ -19,9 +19,8 @@ public class CardManager {
     protected CommandAPDU lastCommand = null;
     protected CardChannel channel = null;
     
-    public CardManager(byte[] appletAID, boolean bDebug) {
+    public CardManager(byte[] appletAID) {
         this.appletId = appletAID;
-        this.bDebug = bDebug;
     }
 
     /**

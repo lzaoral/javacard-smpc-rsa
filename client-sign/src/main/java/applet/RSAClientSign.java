@@ -207,10 +207,9 @@ public class RSAClientSign extends Applet {
         if (p2 != P2_SINGLE && p2 != (P2_DIVIDED | P2_PART_0) && p2 != (P2_DIVIDED | P2_PART_1))
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        // get part number
-        p2 &= 0x0F;
         short lc = (short) (apduBuffer[ISO7816.OFFSET_LC] & MAX_APDU_LENGTH);
-        short position = (short) (ARR_LEN - (p2 * MAX_APDU_LENGTH + lc));
+        // get part number (p2 & 0x0F)
+        short position = (short) (ARR_LEN - ((p2 & 0x0F) * MAX_APDU_LENGTH + lc));
         Util.arrayCopyNonAtomic(apduBuffer, ISO7816.OFFSET_CDATA, tmpBuffer, position, lc);
     }
 
@@ -283,7 +282,7 @@ public class RSAClientSign extends Applet {
      *
      * Upon calling, private exponent and modulus must be already set.
      *
-     * After the mssage is set, any subsequent call zeroes the stored
+     * After the massage is set, any subsequent call zeroes the stored
      * message and starts its loading from the scratch.
      *
      * @param apdu object representing the communication between the card and the world
@@ -316,7 +315,7 @@ public class RSAClientSign extends Applet {
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void signRSAMessage(APDU apdu) {
-        if (!privateKey.isInitialized() || messageSet != KEY_LOADED)
+        if (messageSet != KEY_LOADED)
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         byte[] apduBuffer = apdu.getBuffer();
@@ -334,7 +333,7 @@ public class RSAClientSign extends Applet {
     }
 
     /**
-     * Helper method. Zeroes the given array.
+     * Zeroes the given array.
      *
      * @param arr array to be zeroed
      */

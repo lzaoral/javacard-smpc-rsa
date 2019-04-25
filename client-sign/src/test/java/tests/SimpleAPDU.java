@@ -41,11 +41,10 @@ public class SimpleAPDU {
     public static final byte P1_SET_D = 0x00;
     public static final byte P1_SET_N = 0x01;
 
-    public static final byte SINGLE_PART = 0x00;
-    public static final byte MULTI_PART = 0x10;
-
-    public static final byte PART_0 = 0x00;
-    public static final byte PART_1 = 0x01;
+    public static final byte P2_PART_0 = 0x00;
+    public static final byte P2_PART_1 = 0x01;
+    public static final byte P2_SINGLE = 0x00;
+    public static final byte P2_DIVIDED = 0x10;
 
     public static final byte NONE = 0x00;
 
@@ -54,7 +53,7 @@ public class SimpleAPDU {
     public static final String MESSAGE_FILE = TEST_PATH + "message.txt";
     public static final String CLIENT_SHARE_SIG_FILE = TEST_PATH + "client.sig";
 
-    public static final short CLIENT_ARR_LEN = 256;
+    public static final short CLIENT_ARR_LENGTH = 256;
 
     private final BigInteger n;
     private static final short MAX_APDU_LENGTH = 0xFF;
@@ -64,7 +63,6 @@ public class SimpleAPDU {
 
     private final ArrayList<CommandAPDU> APDU_SET_N = new ArrayList<>();
     private final ArrayList<CommandAPDU> APDU_SET_D = new ArrayList<>();
-    private final ArrayList<CommandAPDU> APDU_MESSAGE = new ArrayList<>();
 
     private static final CardManager cardMgr = new CardManager(APPLET_AID_BYTE);
 
@@ -85,7 +83,7 @@ public class SimpleAPDU {
             num = Util.hexStringToByteArray(reader.readLine());
             n = new BigInteger(1, num);
 
-            if (num.length != CLIENT_ARR_LEN)
+            if (num.length != CLIENT_ARR_LENGTH)
                 throw new IllegalArgumentException("Modulus is not a 256-bit number.");
 
             if (d.compareTo(n) > 0)
@@ -126,18 +124,17 @@ public class SimpleAPDU {
      */
     private void setNumber(ArrayList<CommandAPDU> cmds, byte[] num, byte ins, byte p1) {
         if (num.length <= MAX_APDU_LENGTH) {
-            cmds.add(new CommandAPDU(CLA_RSA_SMPC_CLIENT_SIGN, ins, p1, PART_0 | SINGLE_PART, num));
+            cmds.add(new CommandAPDU(CLA_RSA_SMPC_CLIENT_SIGN, ins, p1, P2_PART_0 | P2_SINGLE, num));
             return;
         }
 
         for (int i = num.length; i > 0; i -= MAX_APDU_LENGTH) {
             cmds.add(new CommandAPDU(
-                    CLA_RSA_SMPC_CLIENT_SIGN, ins, p1 , (i / MAX_APDU_LENGTH > 0 ? PART_0 : PART_1) | MULTI_PART,
+                    CLA_RSA_SMPC_CLIENT_SIGN, ins, p1, (i / MAX_APDU_LENGTH > 0 ? P2_PART_0 : P2_PART_1) | P2_DIVIDED,
                     Arrays.copyOfRange(num, i - MAX_APDU_LENGTH > 0 ? i - MAX_APDU_LENGTH : 0, i)
             ));
         }
     }
-
 
     /**
      *
@@ -151,24 +148,11 @@ public class SimpleAPDU {
 
     /**
      *
-     * @param cmd
-     * @throws Exception
-     */
-    public void transmitNumber(ArrayList<CommandAPDU> cmd) throws Exception {
-        for (CommandAPDU c : cmd) {
-            ResponseAPDU res = transmit(c);
-            if (res.getSW() != 0x9000)
-                throw new CardException(String.format("Expected card response: %d", res.getSW()));
-        }
-    }
-
-    /**
-     *
      * @throws Exception
      */
     public void setKeys() throws Exception {
-        transmitNumber(APDU_SET_D);
-        transmitNumber(APDU_SET_N);
+        transmitNumber(APDU_SET_D, "Set D");
+        transmitNumber(APDU_SET_N, "Set N");
     }
 
     /**
@@ -178,6 +162,7 @@ public class SimpleAPDU {
      */
     public ResponseAPDU signMessage() throws Exception {
         String message;
+        ArrayList<CommandAPDU> APDU_MESSAGE = new ArrayList<>();
 
         try (InputStream in = new FileInputStream(MESSAGE_FILE)) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(in));
@@ -195,20 +180,43 @@ public class SimpleAPDU {
                 throw new IOException(String.format("Wrong '%s' file format.", MESSAGE_FILE));
         }
 
-        transmitNumber(APDU_MESSAGE);
-        ResponseAPDU response = cardMgr.transmit(
-            new CommandAPDU(CLA_RSA_SMPC_CLIENT_SIGN, INS_SIGNATURE, NONE, NONE, CLIENT_ARR_LEN)
-        );
+        transmitNumber(APDU_MESSAGE, "Set message");
+        ResponseAPDU res = cardMgr.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SIGNATURE, NONE, NONE, CLIENT_ARR_LENGTH
+        ));
+        handleError(res, "Signing");
 
         try (OutputStream out = new FileOutputStream(CLIENT_SHARE_SIG_FILE)) {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
             writer.write(String.format(
-                    "%s%n%s%n", message, Util.toHex(Util.trimLeadingZeroes(response.getData()))
+                    "%s%n%s%n", message, Util.toHex(Util.trimLeadingZeroes(res.getData()))
             ));
             writer.flush();
         }
 
-        return response;
+        return res;
+    }
+
+    /**
+     *
+     * @param cmd
+     * @throws Exception
+     */
+    private void transmitNumber(ArrayList<CommandAPDU> cmd, String operation) throws Exception {
+        for (CommandAPDU c : cmd) {
+            handleError(transmit(c), operation);
+        }
+    }
+
+    /**
+     *
+     * @param res
+     * @param operation
+     * @throws CardException
+     */
+    private void handleError(ResponseAPDU res, String operation) throws CardException {
+        if (res.getSW() != 0x9000)
+            throw new CardException(String.format("%s: %d", operation, res.getSW()));
     }
 
 }
