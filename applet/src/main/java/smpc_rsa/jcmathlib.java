@@ -3,6 +3,7 @@ package smpc_rsa;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
+
 import javacard.security.CryptoException;
 import javacard.security.ECPrivateKey;
 import javacard.security.ECPublicKey;
@@ -12,6 +13,7 @@ import javacard.security.KeyPair;
 import javacard.security.MessageDigest;
 import javacard.security.RSAPublicKey;
 import javacard.security.Signature;
+
 import javacardx.crypto.Cipher;
 
 public class jcmathlib {

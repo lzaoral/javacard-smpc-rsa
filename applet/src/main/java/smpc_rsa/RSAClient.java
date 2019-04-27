@@ -278,7 +278,7 @@ public class RSAClient extends Applet {
         if (!d1ServerSent || !nSent)
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
-        Common.setMessage(apdu, tmpBuffer, messageState, privateKey, MAX_APDU_LENGTH);
+        messageState = Common.setMessage(apdu, tmpBuffer, messageState, privateKey, MAX_APDU_LENGTH);
     }
 
 }

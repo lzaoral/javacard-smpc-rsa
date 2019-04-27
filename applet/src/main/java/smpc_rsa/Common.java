@@ -114,7 +114,7 @@ public class Common {
         rsa.doFinal(message, (short) 0, (short) message.length, apduBuffer, (short) 0);
         clearByteArray(message);
 
-        apdu.setOutgoingAndSend((short) 0, (short) apduBuffer.length);
+        apdu.setOutgoingAndSend((short) 0, (short) message.length);
     }
 
     /**

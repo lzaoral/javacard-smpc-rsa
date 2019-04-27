@@ -5,11 +5,12 @@ import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 import java.io.OutputStream;
 
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import static javacard.framework.ISO7816.*;
 import static tests.client_full.ClientFullAPDU.*;
 
 /**
@@ -20,9 +21,9 @@ import static tests.client_full.ClientFullAPDU.*;
  */
 public class ClientFullTest {
 
-    private static final int TEST_COUNT = 50;
+    private static final int TEST_COUNT = 1000;
+    private static final int SW_OK = 0x9000;
 
-    private static int SW_OK = 0x9000;
     private static boolean realCard = false;
     private ClientFullAPDU client;
 
@@ -43,7 +44,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CLA_NOT_SUPPORTED, res.getSW());
+        Assert.assertEquals(SW_CLA_NOT_SUPPORTED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -65,7 +66,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -76,7 +77,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -100,7 +101,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -137,7 +138,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -145,7 +146,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -158,7 +159,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -166,7 +167,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -177,7 +178,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CONDITIONS_NOT_SATISFIED, res.getSW());
+        Assert.assertEquals(SW_CONDITIONS_NOT_SATISFIED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -189,7 +190,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -201,7 +202,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -233,7 +234,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -265,7 +266,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -316,7 +317,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CONDITIONS_NOT_SATISFIED, res.getSW());
+        Assert.assertEquals(SW_CONDITIONS_NOT_SATISFIED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -328,7 +329,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CONDITIONS_NOT_SATISFIED, res.getSW());
+        Assert.assertEquals(SW_CONDITIONS_NOT_SATISFIED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -340,7 +341,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CONDITIONS_NOT_SATISFIED, res.getSW());
+        Assert.assertEquals(SW_CONDITIONS_NOT_SATISFIED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -352,7 +353,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CONDITIONS_NOT_SATISFIED, res.getSW());
+        Assert.assertEquals(SW_CONDITIONS_NOT_SATISFIED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -407,7 +408,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -444,7 +445,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -551,7 +552,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -559,7 +560,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -570,7 +571,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CONDITIONS_NOT_SATISFIED, res.getSW());
+        Assert.assertEquals(SW_CONDITIONS_NOT_SATISFIED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -583,7 +584,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CONDITIONS_NOT_SATISFIED, res.getSW());
+        Assert.assertEquals(SW_CONDITIONS_NOT_SATISFIED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -604,7 +605,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CONDITIONS_NOT_SATISFIED, res.getSW());
+        Assert.assertEquals(SW_CONDITIONS_NOT_SATISFIED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -617,7 +618,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -625,20 +626,20 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
     public void simpleSign() throws Exception {
         ResponseAPDU res = client.generateKeys();
-        Assert.assertEquals(0x9000, res.getSW());
+        Assert.assertEquals(SW_OK, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         client.getKeys();
 
         res = client.signMessage();
-        Assert.assertEquals(0x9000, res.getSW());
+        Assert.assertEquals(SW_OK, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
@@ -651,14 +652,14 @@ public class ClientFullTest {
             resetCard();
 
             ResponseAPDU responseAPDU = client.generateKeys();
-            Assert.assertEquals(0x9000, responseAPDU.getSW());
+            Assert.assertEquals(SW_OK, responseAPDU.getSW());
             Assert.assertEquals(0, responseAPDU.getData().length);
 
             client.getKeys();
 
             responseAPDU = client.signMessage();
             Assert.assertNotNull(responseAPDU);
-            Assert.assertEquals(0x9000, responseAPDU.getSW());
+            Assert.assertEquals(SW_OK, responseAPDU.getSW());
 
             Process serverProc = new ProcessBuilder(TEST_PATH + "main_server")
                     .redirectError(ProcessBuilder.Redirect.INHERIT).start();
@@ -669,7 +670,10 @@ public class ClientFullTest {
             }
 
             serverProc.waitFor();
-            System.err.flush();
+
+            if (!realCard)
+                Assert.assertEquals(0, serverProc.exitValue());
+
             System.out.println(serverProc.exitValue() == 0 ? "OK" : "NOK");
         }
     }
