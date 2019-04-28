@@ -205,6 +205,10 @@ public class RSAServer extends Applet {
         // do only once
         clientPrivateKey.getModulus(tmpBignatSmall1.as_byte_array(), (short) 0);
         serverPrivateKey.getModulus(tmpBignatBig.as_byte_array(), (short) 0);
+
+        if (!isComprime(tmpBignatSmall1, tmpBignatBig, bignatHelper))
+            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+
         tmpBignatBig.mult(tmpBignatBig, tmpBignatSmall1);
         tmpBignatSmall1.erase();
         // do only once
@@ -229,7 +233,6 @@ public class RSAServer extends Applet {
     }
 
     private void signRSAMessage(APDU apdu) {
-
         // TODO init elsewhere
         rsa.init(clientPrivateKey, Cipher.MODE_DECRYPT);
         rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, tmpBignatSmall1.as_byte_array(), (short) 0);
@@ -237,7 +240,7 @@ public class RSAServer extends Applet {
         rsa.init(clietPublicKey, Cipher.MODE_ENCRYPT);
         rsa.doFinal(tmpBignatSmall1.as_byte_array(), (short) 0, tmpBignatSmall1.length(), tmpBignatSmall2.as_byte_array(), (short) 0);
 
-        tmpBignatBig.from_byte_array(tmpBuffer);
+        tmpBignatSmall2.from_byte_array(tmpBuffer);
 
         // nebude fungovat, blba velikost
         if (!tmpBignatSmall1.same_value(tmpBignatSmall2))
@@ -246,16 +249,98 @@ public class RSAServer extends Applet {
         rsa.init(serverPrivateKey, Cipher.MODE_DECRYPT);
         rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, tmpBignatBig.as_byte_array(), (short) 255);
 
+        serverPrivateKey.getExponent(tmpBignatSmall2.as_byte_array(), (short) 0);
+        serverPrivateKey.getModulus(tmpBignatBig.as_byte_array(), (short) 255);
+
         SGN.subtract(tmpBignatSmall1);
-        SGN.mod_mult(SGN, );
+        SGN.mod_mult(SGN, inverse(tmpBignatSmall2, tmpBignatBig, bignatHelper), tmpBignatBig);
+        SGN.mult(SGN, tmpBignatBig);
+        SGN.add(tmpBignatSmall1);
+
+
         /*
         // Compute the full signature
-        // s = (((s2 - s1) / n1) mod n2) * n1 + s1
         Bignum s = Bignum::mod_exp(m, d2, n2) - s1;
         s.mod_mul_self(Bignum::inverse(n1, n2), n2);
         s *= n1;
         s += s1;
         */
+    }
+
+
+
+
+    /**
+     * TODO:
+     * @param a
+     * @param b
+     * @return
+     */
+    public static boolean isComprime(Bignat a, Bignat b, Bignat_Helper bh) {
+        Bignat newA = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
+        Bignat newB = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
+
+        newA.copy(a);
+        newB.copy(b);
+
+        while (!newA.same_value(newB)) {
+            if (!newA.smaller(newB))
+                newA.subtract(newB);
+            else
+                newB.subtract(newA);
+        }
+
+        return newA.is_zero();
+    }
+
+    /**
+     * TODO:
+     * @param a
+     * @param n
+     * @param bh
+     * @return
+     */
+    public static Bignat inverse(Bignat a, Bignat n, /*Bignat res,*/ Bignat_Helper bh) {
+        Bignat t = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
+        Bignat r = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
+        Bignat newT = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
+        Bignat newR = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
+
+        Bignat quotient = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
+
+        Bignat bak = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
+        Bignat helper = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
+
+        r.clone(n);
+        newT.one();
+        newR.clone(a);
+
+        while (!newR.is_zero()) {
+            quotient.remainder_divide(r, newR);
+
+            bak.clone(newR);
+            helper.mult(quotient, newR);
+            newR.clone(r);
+            newR.subtract(helper);
+            t.clone(bak);
+
+            bak.clone(newT);
+            helper.mult(quotient, newT);
+            newT.clone(t);
+            newT.subtract(helper);
+            t.clone(bak);
+        }
+
+        helper.one();
+        if (r.lesser(helper) || r.same_value(helper))
+            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+
+        if (t.lesser(helper))
+            t.add(n);
+
+        return t;
+        //res.clone(t);
+        //return res;
     }
 
 }
