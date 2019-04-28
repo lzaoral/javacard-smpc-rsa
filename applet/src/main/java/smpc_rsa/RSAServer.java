@@ -5,76 +5,85 @@ import javacard.framework.Applet;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
-import javacard.framework.MultiSelectable;
-import javacard.framework.Util;
-import javacard.security.KeyBuilder;
-import javacard.security.KeyPair;
-import javacard.security.RSAPrivateCrtKey;
-import javacard.security.RSAPublicKey;
-import javacard.security.RandomData;
 
+import javacard.security.*;
+
+import javacardx.crypto.Cipher;
+import org.bouncycastle.jcajce.provider.asymmetric.RSA;
 import smpc_rsa.jcmathlib.Bignat;
 import smpc_rsa.jcmathlib.Bignat_Helper;
 import smpc_rsa.jcmathlib.ECConfig;
 
-public class RSAServer extends Applet implements MultiSelectable {
-    private static final byte RSA_SMPC_CLIENT = 0x1C;
+// TODO: Common constants to separate Class
 
-    private static final byte GENERATE_KEYS = 0x10;
-    private static final byte GET_N = 0x11;
-    private static final byte GET_D2 = 0x12;
-    private static final byte UPDATE_KEYS = 0x13;
-    private static final byte SIGNATURE = 0x20;
-    private static final byte TEST = 0x30;
+public class RSAServer extends Applet {
+    private static final byte CLA_RSA_SMPC_SERVER = 0x03;
+
+    private static final byte INS_GENERATE_KEYS = 0x10;
+    private static final byte INS_SET_CLIENT_KEYS = 0x12;
+    private static final byte P1_SET_N1 = 0x11;
+    private static final byte P1_SET_D1_SERVER = 0x12;
+    private static final byte INS_GET_PUBLIC_N = 0x14;
+    private static final byte INS_SET_CLIENT_SIGNATURE = 0x16;
+
+    private static final byte P1_SET_MESSAGE = 0x05;
+    private static final byte P1_SET_SIGNATURE = 0x06;
+
+    private static final byte INS_SIGNATURE = 0x18;
 
     private static boolean generatedKeys = false;
-    private static final short BUFFER_SIZE = 256;
+    private static final short ARR_SIZE = 256;
 
-    private final Bignat E;
+    private static final byte[] E = new byte[]{0x01, 0x00, 0x01};
 
-    private final Bignat P;
-    private final Bignat Q;
+    private final Bignat tmpBignatSmall1, tmpBignatSmall2, tmpBignatBig;
 
-    private final Bignat N;
-    private final Bignat phiN;
-
-    private final Bignat D;
-    private final Bignat D1;
-    private final Bignat D2;
+    private final Bignat SGN;
     private byte[] tmpBuffer;
 
     private final ECConfig jcMathCfg;
     private final Bignat_Helper bignatHelper;
 
-    private final RandomData rng;
-    private final KeyPair rsaPair;
-    private RSAPrivateCrtKey privateKey;
-    private RSAPublicKey publicKey;
+    private final KeyPair clientRsaPair;
+    private final RSAPrivateKey clientPrivateKey;
+    private final RSAPublicKey clietPublicKey;
+
+    private final KeyPair serverRsaPair;
+    private final RSAPrivateKey serverPrivateKey;
+    private final RSAPublicKey serverPublicKey;
+
+
+
+    private final Cipher rsa;
+
+    private final byte[] keyState = new byte[2];
 
     public static void install(byte[] bArray, short bOffset, byte bLength) {
         new RSAServer(bArray, bOffset, bLength);
     }
 
     public RSAServer(byte[] buffer, short offset, byte length) {
-        jcMathCfg = new ECConfig(BUFFER_SIZE);
+        jcMathCfg = new ECConfig(ARR_SIZE);
         bignatHelper = jcMathCfg.bnh;
 
-        E = new Bignat(new byte[BUFFER_SIZE], bignatHelper);
+        tmpBignatSmall1 = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_PERSISTENT, bignatHelper);
+        tmpBignatSmall2 = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_PERSISTENT, bignatHelper);
+        tmpBignatBig = new Bignat((short) (ARR_SIZE * 2), JCSystem.MEMORY_TYPE_PERSISTENT, bignatHelper);
+        SGN = new Bignat((short) (ARR_SIZE * 2), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
 
-        P = new Bignat((short) (BUFFER_SIZE / 2), JCSystem.CLEAR_ON_DESELECT, bignatHelper);
-        Q = new Bignat((short) (BUFFER_SIZE / 2), JCSystem.CLEAR_ON_DESELECT, bignatHelper);
+        tmpBuffer = JCSystem.makeTransientByteArray(ARR_SIZE, JCSystem.CLEAR_ON_RESET);
 
-        N = new Bignat(new byte[BUFFER_SIZE], bignatHelper);
-        phiN = new Bignat(BUFFER_SIZE, JCSystem.CLEAR_ON_DESELECT, bignatHelper);
+        serverRsaPair = new KeyPair(KeyPair.ALG_RSA, KeyBuilder.LENGTH_RSA_2048);
+        serverPrivateKey = (RSAPrivateKey) serverRsaPair.getPrivate();
+        serverPublicKey = (RSAPublicKey) serverRsaPair.getPublic();
+        serverPublicKey.setExponent(E, (short) 0, (short) E.length);
 
-        D = new Bignat(BUFFER_SIZE, JCSystem.CLEAR_ON_DESELECT, bignatHelper);
-        D1 = new Bignat(new byte[BUFFER_SIZE], bignatHelper);
-        D2 = new Bignat(BUFFER_SIZE, JCSystem.CLEAR_ON_DESELECT, bignatHelper);
+        clientRsaPair = new KeyPair(KeyPair.ALG_RSA, KeyBuilder.LENGTH_RSA_2048);
+        clientPrivateKey = (RSAPrivateKey) clientRsaPair.getPrivate();
+        clietPublicKey = (RSAPublicKey) clientRsaPair.getPublic();
+        clientPrivateKey.setExponent(E, (short) 0, (short) E.length);
 
-        tmpBuffer = JCSystem.makeTransientByteArray(BUFFER_SIZE, JCSystem.CLEAR_ON_DESELECT);
-
-        rng = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
-        rsaPair = new KeyPair(KeyPair.ALG_RSA_CRT, KeyBuilder.LENGTH_RSA_2048);
+        rsa = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
 
         register();
     }
@@ -85,126 +94,168 @@ public class RSAServer extends Applet implements MultiSelectable {
 
         byte[] apduBuffer = apdu.getBuffer();
 
-        if (apduBuffer[ISO7816.OFFSET_CLA] != RSA_SMPC_CLIENT)
+        if (apduBuffer[ISO7816.OFFSET_CLA] != CLA_RSA_SMPC_SERVER)
             ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
 
         switch (apduBuffer[ISO7816.OFFSET_INS]) {
-            case GENERATE_KEYS:
+            case INS_GENERATE_KEYS:
                 generateRSAKeys(apdu);
                 break;
 
-            case GET_N:
-                if (!generatedKeys)
-                    ISOException.throwIt(ISO7816.SW_LAST_COMMAND_EXPECTED);
-
-                Util.arrayCopyNonAtomic(N.as_byte_array(), (short) 0, apduBuffer, (short) 0, BUFFER_SIZE);
-                apdu.setOutgoingAndSend((short) 0, BUFFER_SIZE);
+            case INS_SET_CLIENT_KEYS:
+                setClientKeys(apdu);
                 break;
 
-            case GET_D2:
-                if (!generatedKeys)
-                    ISOException.throwIt(ISO7816.SW_LAST_COMMAND_EXPECTED);
-
-                Util.arrayCopyNonAtomic(D2.as_byte_array(), (short) 0, apduBuffer, (short) 0, BUFFER_SIZE);
-                apdu.setOutgoingAndSend((short) 0, BUFFER_SIZE);
+            case INS_GET_PUBLIC_N:
+                getPublicModulus(apdu);
                 break;
 
-            case UPDATE_KEYS:
-                updateRSAKeys(apdu);
+            case INS_SET_CLIENT_SIGNATURE:
+                setClientSignature(apdu);
                 break;
 
-            case SIGNATURE:
+            case INS_SIGNATURE:
                 signRSAMessage(apdu);
                 break;
 
-            case TEST:
-                test(apdu);
-                break;
-
             default:
-                ISOException.throwIt(ISO7816.SW_UNKNOWN);
+                ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
         }
     }
 
+
+
     private void generateRSAKeys(APDU apdu) {
+        Common.checkZeroP1P2(apdu.getBuffer());
+
+        if (serverPrivateKey.isInitialized())
+            ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+
+        // this should never happen
+        if (!serverPublicKey.isInitialized())
+            ISOException.throwIt(ISO7816.SW_UNKNOWN);
+
         byte[] apduBuffer = apdu.getBuffer();
+        Common.checkZeroP1P2(apduBuffer);
 
-        short lc = (short) apduBuffer[ISO7816.OFFSET_LC];
-        E.from_byte_array(lc, (short) (BUFFER_SIZE - lc), apduBuffer, ISO7816.OFFSET_CDATA);
-
-        privateKey = (RSAPrivateCrtKey) rsaPair.getPrivate();
-        publicKey = (RSAPublicKey) rsaPair.getPublic();
-        rsaPair.genKeyPair();
-
-        privateKey.getP(P.as_byte_array(), (short) 0);
-        privateKey.getQ(Q.as_byte_array(), (short) 0);
-        N.mult(P, Q);
-
-        P.subtract(Bignat_Helper.ONE);
-        Q.subtract(Bignat_Helper.ONE);
-        phiN.mult(P, Q);
-
-        D.clone(E);
-        D.mod_inv(P);
-
-        Bignat foo = new Bignat(new byte[BUFFER_SIZE], bignatHelper);
-        foo.mod_mult(E, D, P);
-
-        if (!foo.equals(Bignat_Helper.ONE))
-            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-
-        Bignat test = new Bignat(new byte[]{0x0,0x0,0x5}, bignatHelper);
-        Bignat test1 = new Bignat(new byte[]{0x0,0x0,0x2}, bignatHelper);
-        test1.mod_inv(test);
-
-        rng.generateData(tmpBuffer, (short) 0x0, BUFFER_SIZE);
-        D1.from_byte_array(BUFFER_SIZE, (short) 0, tmpBuffer, (short) 0);
-
-        D2.clone(D1);
-        D2.mod_sub(D, phiN);
-
-        generatedKeys = true;
+        serverRsaPair.genKeyPair();
     }
 
-    private void updateRSAKeys(APDU apdu) {
+    private void setClientKeys(APDU apdu) {
+        if (!serverPrivateKey.isInitialized() || clientPrivateKey.isInitialized())
+                ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+
+        byte[] apduBuffer = apdu.getBuffer();
+            switch (apduBuffer[ISO7816.OFFSET_P1]) {
+                case P1_SET_D1_SERVER:
+                    if (keyState[P1_SET_D1_SERVER] == Common.DATA_LOADED)
+                        ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+
+                    Common.setNumber(apdu, tmpBuffer);
+                    updateKey(apdu);
+                    break;
+
+                case P1_SET_N1:
+                    if (keyState[P1_SET_D1_SERVER] != Common.DATA_LOADED)
+                        ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+
+                    if (keyState[P1_SET_N1] == Common.DATA_LOADED)
+                        ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+
+                    Common.setNumber(apdu, tmpBuffer);
+                    updateKey(apdu);
+                    break;
+
+            default:
+                ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+        }
+    }
+
+    private void updateKey(APDU apdu) {
+        byte[] apduBuffer = apdu.getBuffer();
+        byte p1 = apduBuffer[ISO7816.OFFSET_P1];
+        byte p2 = apduBuffer[ISO7816.OFFSET_P2];
+
+        if (p1 != P1_SET_D1_SERVER && p1 != P1_SET_N1)
+            ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+
+        keyState[p1] = Common.updateLoadState(keyState[p1], p2);
+        if (keyState[p1] != Common.DATA_LOADED)
+            return;
+
+        if (p1 == P1_SET_D1_SERVER)
+            clientPrivateKey.setExponent(tmpBuffer, (short) 0, (short) tmpBuffer.length);
+        else
+            clientPrivateKey.setModulus(tmpBuffer, (short) 0, (short) tmpBuffer.length);
+
+        if (clientPrivateKey.isInitialized())
+            rsa.init(clientPrivateKey, Cipher.MODE_DECRYPT);
+
+        Common.clearByteArray(tmpBuffer);
+    }
+
+    private void setClientSignature(APDU apdu) {
+    }
+
+    private void getPublicModulus(APDU apdu) {
+        byte[] apduBuffer = apdu.getBuffer();
+        if (apduBuffer[ISO7816.OFFSET_P1] != 0x00)
+            ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+
+        // do only once
+        clientPrivateKey.getModulus(tmpBignatSmall1.as_byte_array(), (short) 0);
+        serverPrivateKey.getModulus(tmpBignatBig.as_byte_array(), (short) 0);
+        tmpBignatBig.mult(tmpBignatBig, tmpBignatSmall1);
+        tmpBignatSmall1.erase();
+        // do only once
+
+        //TODO: check part
+        switch (apduBuffer[ISO7816.OFFSET_P2]) {
+            case Common.P2_PART_0:
+                Common.sendNum(apdu, tmpBignatBig.as_byte_array(), (short) 0, false);
+                break;
+
+            case Common.P2_PART_1:
+                Common.sendNum(apdu, tmpBignatBig.as_byte_array(), (short) 255, false);
+                break;
+
+            default:
+                ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+        }
+
+
+        // after check
+        // tmpBignatBig.erase();
     }
 
     private void signRSAMessage(APDU apdu) {
-    }
 
-    private void test(APDU apdu) {
-        generateRSAKeys(apdu);
+        // TODO init elsewhere
+        rsa.init(clientPrivateKey, Cipher.MODE_DECRYPT);
+        rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, tmpBignatSmall1.as_byte_array(), (short) 0);
 
-        // Random data
-        final byte[] message = {'T', 'h', 'i', 's', ' ', 'i', 's', ' ', 'a', ' ', 't', 'e', 's', 't', '!'};
-        Bignat plaintext = new Bignat(BUFFER_SIZE, JCSystem.CLEAR_ON_DESELECT, bignatHelper);
-        Bignat ciphertext = new Bignat(BUFFER_SIZE, JCSystem.CLEAR_ON_DESELECT, bignatHelper);
-        plaintext.from_byte_array(message);
-        ciphertext.clone(plaintext);
+        rsa.init(clietPublicKey, Cipher.MODE_ENCRYPT);
+        rsa.doFinal(tmpBignatSmall1.as_byte_array(), (short) 0, tmpBignatSmall1.length(), tmpBignatSmall2.as_byte_array(), (short) 0);
 
-        ciphertext.mod_exp(E, N);
-        ciphertext.mod_exp(D, N);
+        tmpBignatBig.from_byte_array(tmpBuffer);
 
-        if (Util.arrayCompare(ciphertext.as_byte_array(), (short) 0, plaintext.as_byte_array(), (short) 0,
-                plaintext.length()) != 0)
+        // nebude fungovat, blba velikost
+        if (!tmpBignatSmall1.same_value(tmpBignatSmall2))
             ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+
+        rsa.init(serverPrivateKey, Cipher.MODE_DECRYPT);
+        rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, tmpBignatBig.as_byte_array(), (short) 255);
+
+        SGN.subtract(tmpBignatSmall1);
+        SGN.mod_mult(SGN, );
+        /*
+        // Compute the full signature
+        // s = (((s2 - s1) / n1) mod n2) * n1 + s1
+        Bignum s = Bignum::mod_exp(m, d2, n2) - s1;
+        s.mod_mul_self(Bignum::inverse(n1, n2), n2);
+        s *= n1;
+        s += s1;
+        */
     }
 
-    public boolean select(boolean b) {
-        return true;
-    }
-
-    public void deselect(boolean b) {
-
-    }
 }
-
-// P:  C92302CAB7ED54788B472D81DF50040B7984A4AA0F663DEF4DF2FF6FCAB31A1BAF3600D13D8F8686E67FFBC384D38D55333A4B61768A917BF6DEC23BD58E6A35AD8C30D67DB39D37973855968C3A8D640D9A0E03933238B5E63AB87FE007332EBFF3D7868A2F7D59BCCD8F4FE9F4436491F820AE565DD23E955ADA4EBEBDD6D7
-// Q:  C33EB97C588EF94196041AE7C6FB39137087A2D1EED104E20A6099BFA11F808F34529F341C8627D62B8F5E88633845382DCFE6CB96A3E1F32352932FEF316E878E348C3240C1FC5BFF1AF9FFA6D447E926E7E1B91D5C4068DCE8B395CB33966BEA1B6A47AABE25867AC867D5BECBAD955D66F5CBF83B6DCE08774BC2CD539EEF
-
-// N:  9966F35716C08A25B16D34502A3ADA14CF0870365EF6F52D7ADAEA2D0D179315A583012AEB05E281D4B984F5D3B9FF960BB8340BAA828AF82FEDC53D38A8A7D2B79CC4FE199DAB8036DF792A2B7DB18BA6E9B3BF6313B7FA83B4834111B47CFECDBCB00F4F579B56C3E979E35DB388DE63E9617977614595345B525BBD23A8BEAA759BE8453E0F085BEDD38215C2E2C29FB70F3C000832683BA5ADE499D2DDE27B71B64D454E466657CBDE15E5582CA30A3AE139AF5BD6E314CE9DF488E4ACD74A2560D1C783B768FA5139EC731098E9B5F6DF3EAB48098BF475B9799B50DB64891F5F2144E9D1F87EC7D7893F68F76358C15B06AB669C67189311C2108944B9
-// pN: 9966F35716C08A25B16D34502A3ADA14CF0870365EF6F52D7ADAEA2D0D179315A583012AEB05E281D4B984F5D3B9FF960BB8340BAA828AF82FEDC53D38A8A7D2B79CC4FE199DAB8036DF792A2B7DB18BA6E9B3BF6313B7FA83B4834111B47CFECDBCB00F4F579B56C3E979E35DB388DE63E9617977614595345B525BBD23A8BD1E13DFA134C1C14E3AA28B186F77A5A3B5AAC7C001D0EF96E35214B52E00433797E91647EB38980945BC83C9FD4C5A15A930AF0CA22D6373FA9D4888C424D41A0E64A3C9090E1DD563FDEA564001C39C8174EF81FAB9906D31524D63F01611C9DF101D530FFC2F184731E06396A906696962448C5CCD5C5A7AC0EBB08477CEF4
-
-// E: 010001
-// D: 57FE9BE9120BE99638C3D1119AC25F73B8A50C58F88096E321A54EB38802D822557EED51C81332B251563988BD7AC563EFDF1ED0E865FA33AEBC961E9A945910C2A7E68288C9E3178C81A071F8F79F492AC4B51D422AC99C5F34783EC9A0CB72AE1D6207CA2303A9E9F59C51007F2D96FB8DFBCB9F7815B1BB1871883B7399801ACD2F1B0B764A46D6C07B93E607A6A023A21473ADEFE9B5FAFAB7240826692C27037F9A87A0BE606C3CC06BC735E248AC2CE11F38AA4455FC914ECF97FEFF386FC3B76AE656874C0ECA9E9F985CD47B0A92D7C65E8AF61572B3117ED10496EE3D64E9A8AFC9EBBD67884049737AF3240357EFF2EDF200407EC8F9CC053DC4C5
-//    57FE9BE9120BE99638C3D1119AC25F73B8A50C58F88096E321A54EB38802D822557EED51C81332B251563988BD7AC563EFDF1ED0E865FA33AEBC961E9A945910C2A7E68288C9E3178C81A071F8F79F492AC4B51D422AC99C5F34783EC9A0CB72AE1D6207CA2303A9E9F59C51007F2D96FB8DFBCB9F7815B1BB1871883B7399801ACD2F1B0B764A46D6C07B93E607A6A023A21473ADEFE9B5FAFAB7240826692C27037F9A87A0BE606C3CC06BC735E248AC2CE11F38AA4455FC914ECF97FEFF386FC3B76AE656874C0ECA9E9F985CD47B0A92D7C65E8AF61572B3117ED10496EE3D64E9A8AFC9EBBD67884049737AF3240357EFF2EDF200407EC8F9CC053DC4C5

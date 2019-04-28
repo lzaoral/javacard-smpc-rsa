@@ -24,6 +24,8 @@ public class Common {
      * Constants
      */
     public static final byte DATA_LOADED = 0x20;
+    private static final short MAX_COMMAND_APDU_LENGTH = 255;
+    private static final short MAX_RESPONSE_APDU_LENGTH = 256;
     // from JCMathLib
     private static final short DIGIT_MASK = 0xFF;
     private static final short DIGIT_LENGTH = 8;
@@ -42,19 +44,18 @@ public class Common {
      *
      * @param apdu object representing the communication between the card and the world
      * @param target target byte array
-     * @param maxAPDULength maximum length of data in APDU buffer
      * @throws ISOException SW_INCORRECT_P1P2
      */
-    public static void setNumber(APDU apdu, byte[] target, short maxAPDULength) {
+    public static void setNumber(APDU apdu, byte[] target) {
         byte[] apduBuffer = apdu.getBuffer();
         byte p2 = apduBuffer[ISO7816.OFFSET_P2];
 
         if (p2 != P2_SINGLE && p2 != (P2_DIVIDED | P2_PART_0) && p2 != (P2_DIVIDED | P2_PART_1))
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        short lc = (short) (apduBuffer[ISO7816.OFFSET_LC] & maxAPDULength);
+        short lc = (short) (apduBuffer[ISO7816.OFFSET_LC] & MAX_COMMAND_APDU_LENGTH);
         // get part number (p2 & 0x0F)
-        short position = (short) (target.length - ((p2 & 0x0F) * maxAPDULength + lc));
+        short position = (short) (target.length - ((p2 & 0x0F) * MAX_COMMAND_APDU_LENGTH + lc));
         javacard.framework.Util.arrayCopyNonAtomic(apduBuffer, ISO7816.OFFSET_CDATA, target, position, lc);
     }
 
@@ -71,13 +72,12 @@ public class Common {
      * @param apdu object representing the communication between the card and the world
      * @param target target byte array
      * @param privateKey RSA private key
-     * @param maxAPDULength maximum length of data in APDU buffer
      * @throws ISOException SW_CONDITIONS_NOT_SATISFIED if the keys have not yet
      *     been fully set
      * @throws ISOException SW_INCORRECT_P1P2
      */
     public static byte setMessage(APDU apdu, byte[] target, byte messageState,
-                                  RSAPrivateKey privateKey, short maxAPDULength) {
+                                  RSAPrivateKey privateKey) {
         if (!privateKey.isInitialized())
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
@@ -89,7 +89,7 @@ public class Common {
             clearByteArray(target);
         }
 
-        setNumber(apdu, target, maxAPDULength);
+        setNumber(apdu, target);
         return updateLoadState(messageState, apdu.getBuffer()[ISO7816.OFFSET_P2]);
     }
 
@@ -104,7 +104,7 @@ public class Common {
      *     have not yet been fully set
      * @throws ISOException SW_INCORRECT_P1P2
      */
-    public static void signMessage(APDU apdu, byte[] message, byte messageState, Cipher rsa) {
+    public static void clientSignMessage(APDU apdu, byte[] message, byte messageState, Cipher rsa) {
         if (messageState != DATA_LOADED)
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
@@ -145,6 +145,22 @@ public class Common {
             ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
         return state == 0x00 ? p2 : DATA_LOADED;
+    }
+
+    /**
+     * TODO: Sends the given array and then clears its contents.
+     *
+     * @param num array to be sent
+     * @param offset TODO
+     * @param apdu object representing the communication between the card and the world
+     */
+    public static void sendNum(APDU apdu, byte[] num, short offset, boolean clearAll) {
+        Util.arrayCopyNonAtomic(num, offset, apdu.getBuffer(), (short) 0, MAX_RESPONSE_APDU_LENGTH);
+
+        if (clearAll)
+            Common.clearByteArray(num);
+
+        apdu.setOutgoingAndSend((short) 0, MAX_RESPONSE_APDU_LENGTH);
     }
 
     /**

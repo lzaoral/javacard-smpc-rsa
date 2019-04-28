@@ -47,7 +47,6 @@ public class RSAClient extends Applet {
      * Helper constants
      */
     private static final short ARR_LEN = 256;
-    private static final short MAX_APDU_LENGTH = 0xFF;
 
     private final static byte[] E = new byte[]{0x01, 0x00, 0x01};
     private final byte[] tmpBuffer;
@@ -137,7 +136,7 @@ public class RSAClient extends Applet {
                 break;
 
             case INS_SIGNATURE:
-                Common.signMessage(apdu, tmpBuffer, messageState, rsa);
+                Common.clientSignMessage(apdu, tmpBuffer, messageState, rsa);
                 break;
 
             default:
@@ -146,7 +145,7 @@ public class RSAClient extends Applet {
     }
 
     /**
-     * Generates the client and smpc_rsa.server shares of client key and the client modulus.
+     * Generates the client and server shares of client key and the client modulus.
      * If the keys have already been generated, does nothing. To regenerate them,
      * use the INS_RESET command first and then try again.
      *
@@ -160,8 +159,7 @@ public class RSAClient extends Applet {
         byte[] apduBuffer = apdu.getBuffer();
         Common.checkZeroP1P2(apduBuffer);
 
-        if (!publicKey.isInitialized())
-            publicKey.setExponent(E, (short) 0, (short) E.length);
+        publicKey.setExponent(E, (short) 0, (short) E.length);
 
         rsaPair.genKeyPair();
         privateKey.getExponent(d1ServerBuffer, (short) 0);
@@ -233,7 +231,7 @@ public class RSAClient extends Applet {
                 if (privateKey.getModulus(tmpBuffer, (short) 0) != ARR_LEN)
                     ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
 
-                sendNum(tmpBuffer, apdu);
+                Common.sendNum(apdu, tmpBuffer, (short) 0, true);
                 nSent = true;
                 break;
 
@@ -241,26 +239,13 @@ public class RSAClient extends Applet {
                 if (d1ServerSent)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-                sendNum(d1ServerBuffer, apdu);
+                Common.sendNum(apdu, d1ServerBuffer, (short) 0, true);
                 d1ServerSent = true;
                 break;
 
             default:
                 ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
         }
-    }
-
-    /**
-     * Sends the given array and then clears its contents.
-     *
-     * @param num array to be sent
-     * @param apdu object representing the communication between the card and the world
-     */
-    private void sendNum(byte[] num,  APDU apdu) {
-        Util.arrayCopyNonAtomic(num, (short) 0, apdu.getBuffer(), (short) 0, ARR_LEN);
-        Common.clearByteArray(num);
-
-        apdu.setOutgoingAndSend((short) 0, ARR_LEN);
     }
 
     /**
@@ -278,7 +263,7 @@ public class RSAClient extends Applet {
         if (!d1ServerSent || !nSent)
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
-        messageState = Common.setMessage(apdu, tmpBuffer, messageState, privateKey, MAX_APDU_LENGTH);
+        messageState = Common.setMessage(apdu, tmpBuffer, messageState, privateKey);
     }
 
 }

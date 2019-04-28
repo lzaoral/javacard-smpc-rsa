@@ -43,7 +43,6 @@ public class RSAClientSign extends Applet {
      * Helper constants
      */
     private static final short ARR_LEN = 256;
-    private static final short MAX_APDU_LENGTH = 0xFF;
 
     private final byte[] tmpBuffer;
 
@@ -113,11 +112,11 @@ public class RSAClientSign extends Applet {
                 break;
 
             case INS_SET_MESSAGE:
-                messageState = Common.setMessage(apdu, tmpBuffer, messageState, privateKey, MAX_APDU_LENGTH);
+                messageState = Common.setMessage(apdu, tmpBuffer, messageState, privateKey);
                 break;
 
             case INS_SIGNATURE:
-                Common.signMessage(apdu, tmpBuffer, messageState, rsa);
+                Common.clientSignMessage(apdu, tmpBuffer, messageState, rsa);
                 messageState = 0x00;
                 break;
 
@@ -154,7 +153,7 @@ public class RSAClientSign extends Applet {
                 if (keyState[P1_SET_D1_CLIENT] == Common.DATA_LOADED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-                Common.setNumber(apdu, tmpBuffer, MAX_APDU_LENGTH);
+                Common.setNumber(apdu, tmpBuffer);
                 updateKey(apdu);
                 break;
 
@@ -165,7 +164,7 @@ public class RSAClientSign extends Applet {
                 if (keyState[P1_SET_N] == Common.DATA_LOADED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-                Common.setNumber(apdu, tmpBuffer, MAX_APDU_LENGTH);
+                Common.setNumber(apdu, tmpBuffer);
                 updateKey(apdu);
                 break;
 
