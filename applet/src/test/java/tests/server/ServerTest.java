@@ -1,9 +1,7 @@
 package tests.server;
 
-import org.junit.Assert;
-import org.testng.annotations.*;
-
-import javax.smartcardio.ResponseAPDU;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 /**
  * Example test class for the applet
@@ -13,44 +11,25 @@ import javax.smartcardio.ResponseAPDU;
  */
 public class ServerTest {
 
-    private static final int TEST_COUNT = 1000;
-
-    public ServerTest() {
-    }
+    private static boolean realCard = false;
+    private static int SW_OK = 0x9000;
+    private ServerAPDU server;
 
     @BeforeClass
-    public static void setUpClass() throws Exception {
+    public void setClass() throws Exception {
+        server = new ServerAPDU(realCard);
     }
 
-    @AfterClass
-    public static void tearDownClass() throws Exception {
-    }
-
-    @BeforeMethod
-    public void setUpMethod() throws Exception {
-    }
-
-    @AfterMethod
-    public void tearDownMethod() throws Exception {
-    }
-
-    // Example test
-    /*@Test
-    public void hello() throws Exception {
-        final ResponseAPDU responseAPDU = ClientFullAPDU.generateKeys();
-        Assert.assertNotNull(responseAPDU);
-        Assert.assertEquals(0x9000, responseAPDU.getSW());
-        Assert.assertNotNull(responseAPDU.getBytes());
+    /*@BeforeMethod
+    public void setUp() throws Exception {
+        client.transmit(new CommandAPDU(CLA_RSA_SMPC_CLIENT_SIGN, INS_RESET, 0x00, 0x00));
     }*/
 
     @Test
-    public void implTest() throws Exception {
-        for (int i = 1; i <= TEST_COUNT; i++) {
-            System.out.print("TEST" + i +": ");
-            final ResponseAPDU responseAPDU = ServerAPDU.test();
-            Assert.assertNotNull(responseAPDU);
-            Assert.assertEquals(0x9000, responseAPDU.getSW());
-            System.out.println("OK");
-        }
+    public void simpleSign() throws Exception {
+        server.generateKeys();
+        server.setClientKeys();
+        server.getPublicModulus();
+        server.signMessage();
     }
 }

@@ -1,16 +1,25 @@
 package tests.server;
 
-import smpc_rsa.RSAClient;
-
 import cardTools.CardManager;
 import cardTools.RunConfig;
 import cardTools.Util;
 
-import javax.smartcardio.CardException;
+import smpc_rsa.RSAServer;
+
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Test class.
@@ -19,115 +28,199 @@ import java.util.ArrayList;
  * @author Petr Svenda, Dusan Klinec (ph4r05)
  */
 public class ServerAPDU {
-    private static final byte RSA_SMPC_CLIENT = 0x1C;
+    private static final byte CLA_RSA_SMPC_SERVER = 0x03;
 
-    private static final byte GENERATE_KEYS = 0x10;
-    private static final byte GET_N = 0x11;
-    private static final byte GET_D2 = 0x12;
-    private static final byte UPDATE_KEYS = 0x20;
-    private static final byte TEST = 0x30;
-    private static final short CLIENT_KEY_BYTE_LENGTH = 256;
+    private static final byte INS_GENERATE_KEYS = 0x10;
+    private static final byte INS_SET_CLIENT_KEYS = 0x12;
+    private static final byte P1_SET_N1 = 0x11;
+    private static final byte P1_SET_D1_SERVER = 0x12;
+    private static final byte INS_GET_PUBLIC_N = 0x14;
+    private static final byte INS_SET_CLIENT_SIGNATURE = 0x16;
 
+    private static final byte P1_SET_MESSAGE = 0x05;
+    private static final byte P1_SET_SIGNATURE = 0x06;
+
+    private static final byte INS_SIGNATURE = 0x18;
+
+    public static final byte P2_PART_0 = 0x00;
+    public static final byte P2_PART_1 = 0x01;
+    public static final byte P2_SINGLE = 0x00;
+    public static final byte P2_DIVIDED = 0x10;
+
+    public static final byte NONE = 0x00;
+
+    public static final short CLIENT_ARR_LENGTH = 256;
+    private static final short MAX_APDU_LENGTH = 0xFF;
+
+    public static final String TEST_PATH = "src/test/java/tests/client_full/";
+    public static final String CLIENT_KEY_SERVER_SHARE_FILE = TEST_PATH + "for_server.key";
+    public static final String MESSAGE_FILE = TEST_PATH + "message.txt";
+    public static final String CLIENT_SHARE_SIG_FILE = TEST_PATH + "client.sig";
 
     private static String APPLET_AID = "0102030405060708090304";
     private static byte[] APPLET_AID_BYTE = Util.hexStringToByteArray(APPLET_AID);
 
-    private static final int E = 65537;
-
-    private static final CommandAPDU APDU_GENERATE_KEYS = new CommandAPDU(RSA_SMPC_CLIENT, GENERATE_KEYS,
-            0x0, 0x0, BigInteger.valueOf(E).toByteArray());
-    private static final CommandAPDU APDU_GET_N = new CommandAPDU(RSA_SMPC_CLIENT, GET_N,
-            0x0, 0x0, CLIENT_KEY_BYTE_LENGTH);
-    private static final CommandAPDU APDU_GET_D2 = new CommandAPDU(RSA_SMPC_CLIENT, GET_D2,
-            0x0, 0x0, CLIENT_KEY_BYTE_LENGTH);
-    private static final CommandAPDU APDU_TEST = new CommandAPDU(RSA_SMPC_CLIENT, TEST,
-            0x0, 0x0, BigInteger.valueOf(E).toByteArray());
-
+    private static final CardManager cardMgr = new CardManager(APPLET_AID_BYTE);
 
     /**
-     * Main entry point.
      *
-     * @param args
+     * @param realCard
+     * @throws Exception
      */
-    public static void main(String[] args) {
-        try {
-            generateKeys();
-        } catch (Exception ex) {
-            System.out.println("Exception : " + ex);
-        }
-    }
-
-    public static ResponseAPDU generateKeys() throws Exception {
-        final CardManager cardMngr = new CardManager(APPLET_AID_BYTE);
+    public ServerAPDU(boolean realCard) throws Exception {
         final RunConfig runCfg = RunConfig.getDefaultConfig();
 
-        // Running on physical card
-        //runCfg.setTestCardType(RunConfig.CARD_TYPE.PHYSICAL);
-
-        // Running in the simulator
-        runCfg.setAppletToSimulate(RSAClient.class)
-                .setTestCardType(RunConfig.CARD_TYPE.JCARDSIMLOCAL)
-                .setbReuploadApplet(true)
-                .setInstallData(new byte[8]);
+        if (realCard)
+            runCfg.setTestCardType(RunConfig.CARD_TYPE.PHYSICAL);
+        else {
+            runCfg.setAppletToSimulate(RSAServer.class)
+                    .setTestCardType(RunConfig.CARD_TYPE.JCARDSIMLOCAL)
+                    .setbReuploadApplet(true)
+                    .setInstallData(new byte[8]);
+        }
 
         System.out.print("Connecting to card...");
-        if (!cardMngr.Connect(runCfg)) {
-            return null;
+        if (!cardMgr.Connect(runCfg)) {
+            System.out.println(" Fail.");
+            return;
         }
         System.out.println(" Done.");
-
-        ResponseAPDU response = sendCommandWithInitSequence(cardMngr, APDU_GENERATE_KEYS, null);
-        response = sendCommandWithInitSequence(cardMngr, APDU_GET_N, null);
-        response = sendCommandWithInitSequence(cardMngr, APDU_GET_D2, null);
-        System.out.println(response);
-
-        return response;
     }
 
-    public static ResponseAPDU test() throws Exception {
-        final CardManager cardMngr = new CardManager(APPLET_AID_BYTE);
-        final RunConfig runCfg = RunConfig.getDefaultConfig();
+    public ResponseAPDU transmit(CommandAPDU cmd) throws Exception {
+        return cardMgr.transmit(cmd);
+    }
 
-        // Running on physical card
-        //runCfg.setTestCardType(RunConfig.CARD_TYPE.PHYSICAL);
+    public ResponseAPDU generateKeys() throws Exception {
+        //TODO:
 
-        // Running in the simulator
-        runCfg.setAppletToSimulate(RSAClient.class)
-                .setTestCardType(RunConfig.CARD_TYPE.JCARDSIMLOCAL)
-                .setbReuploadApplet(true)
-                .setInstallData(new byte[8]);
+        return transmit(new CommandAPDU(
+                CLA_RSA_SMPC_SERVER, INS_GENERATE_KEYS, 0x00, 0x00
+        ));
+    }
 
-        System.out.print("Connecting to card...");
-        if (!cardMngr.Connect(runCfg)) {
-            return null;
+    public void setClientKeys() throws Exception {
+        ArrayList<CommandAPDU> APDU_SET_D1_SERVER = new ArrayList<>();
+        ArrayList<CommandAPDU> APDU_SET_N1 = new ArrayList<>();
+
+        try (InputStream in = new FileInputStream(CLIENT_KEY_SERVER_SHARE_FILE)) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+
+            byte[] num = Util.hexStringToByteArray(reader.readLine());
+            BigInteger d = new BigInteger(1, num);
+
+            setNumber(APDU_SET_D1_SERVER, num, INS_SET_CLIENT_KEYS, P1_SET_D1_SERVER);
+
+            num = Util.hexStringToByteArray(reader.readLine());
+            BigInteger n = new BigInteger(1, num);
+
+            if (num.length != CLIENT_ARR_LENGTH)
+                throw new IllegalArgumentException("Modulus is not a 256-bit number.");
+
+            if (d.compareTo(n) > 0)
+                throw new IllegalArgumentException("Private key cannot be larger than modulus.");
+
+            setNumber(APDU_SET_N1, num, INS_SET_CLIENT_KEYS, P1_SET_N1);
+
+            if (reader.readLine() != null)
+                throw new IOException(String.format("Wrong '%s' file format.", CLIENT_KEY_SERVER_SHARE_FILE));
         }
-        System.out.println(" Done.");
 
-        final ResponseAPDU response = sendCommandWithInitSequence(cardMngr, APDU_TEST, null);
-        System.out.println(response);
-
-        return response;
+        transmitNumber(APDU_SET_D1_SERVER);
+        transmitNumber(APDU_SET_N1);
     }
 
     /**
-     * Sending command to the card.
-     * Enables to send init commands before the main one.
      *
-     * @param cardMgr
-     * @param command
-     * @param initCommands
-     * @return
-     * @throws CardException
+     * @param cmd
+     * @throws Exception
      */
-    public static ResponseAPDU sendCommandWithInitSequence(CardManager cardMgr, CommandAPDU command,
-                                                           ArrayList<CommandAPDU>  initCommands) throws CardException {
-        if (initCommands != null) {
-            for (CommandAPDU cmd : initCommands) {
-                cardMgr.getChannel().transmit(cmd);
-            }
+    private void transmitNumber(ArrayList<CommandAPDU> cmd) throws Exception {
+        for (CommandAPDU c : cmd) {
+            transmit(c);
+        }
+    }
+
+    /**
+     *
+     *
+     * @param cmds
+     * @param num
+     * @param ins
+     * @param p1
+     */
+    private void setNumber(ArrayList<CommandAPDU> cmds, byte[] num, byte ins, byte p1) {
+        if (num.length <= MAX_APDU_LENGTH) {
+            cmds.add(new CommandAPDU(CLA_RSA_SMPC_SERVER, ins, p1, P2_PART_0 | P2_SINGLE, num));
+            return;
         }
 
-        return cardMgr.getChannel().transmit(command);
+        for (int i = num.length; i > 0; i -= MAX_APDU_LENGTH) {
+            cmds.add(new CommandAPDU(
+                    CLA_RSA_SMPC_SERVER, ins, p1, (i / MAX_APDU_LENGTH > 0 ? P2_PART_0 : P2_PART_1) | P2_DIVIDED,
+                    Arrays.copyOfRange(num, i - MAX_APDU_LENGTH > 0 ? i - MAX_APDU_LENGTH : 0, i)
+            ));
+        }
+    }
+
+    public ArrayList<ResponseAPDU> getPublicModulus() throws Exception {
+        ArrayList<ResponseAPDU> res = new ArrayList<>();
+
+        // zjednodusit
+        res.add(transmit(new CommandAPDU(
+            CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_N, P2_PART_0, 0x00
+        )));
+
+        res.add(transmit(new CommandAPDU(
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_N, P2_PART_1, 0x00
+        )));
+
+        return res;
+    }
+
+    public ResponseAPDU signMessage() throws Exception {
+        ArrayList<CommandAPDU> APDU_SET_MESSAGE = new ArrayList<>();
+        ArrayList<CommandAPDU> APDU_SET_CLIENT_SIGNATURE = new ArrayList<>();
+        String message;
+
+        try (InputStream in = new FileInputStream(CLIENT_SHARE_SIG_FILE)) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+
+            message = reader.readLine();
+            byte[] num = Util.hexStringToByteArray(message);
+            BigInteger d = new BigInteger(1, num);
+
+            setNumber(APDU_SET_MESSAGE, num, INS_SET_CLIENT_SIGNATURE, P1_SET_MESSAGE);
+
+            num = Util.hexStringToByteArray(reader.readLine());
+            BigInteger n = new BigInteger(1, num);
+
+            if (num.length != CLIENT_ARR_LENGTH)
+                throw new IllegalArgumentException("Modulus is not a 256-bit number.");
+
+            if (d.compareTo(n) > 0)
+                throw new IllegalArgumentException("Private key cannot be larger than modulus.");
+
+            setNumber(APDU_SET_CLIENT_SIGNATURE, num, INS_SET_CLIENT_SIGNATURE, P1_SET_SIGNATURE);
+
+            if (reader.readLine() != null)
+                throw new IOException(String.format("Wrong '%s' file format.", CLIENT_SHARE_SIG_FILE));
+        }
+
+        transmitNumber(APDU_SET_MESSAGE);
+        transmitNumber(APDU_SET_CLIENT_SIGNATURE);
+
+        ResponseAPDU res = cardMgr.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_SERVER, INS_SIGNATURE, NONE, NONE, CLIENT_ARR_LENGTH
+        ));
+
+        try (OutputStream out = new FileOutputStream(CLIENT_SHARE_SIG_FILE)) {
+            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+            writer.write(String.format("%s%n%s%n", message, Util.toHex(Util.trimLeadingZeroes(res.getData()))));
+            writer.flush();
+        }
+
+        return res;
     }
 
 }

@@ -54,15 +54,10 @@ public class ClientSignAPDU {
     public static final String CLIENT_SHARE_SIG_FILE = TEST_PATH + "client.sig";
 
     public static final short CLIENT_ARR_LENGTH = 256;
-
-    private final BigInteger n;
     private static final short MAX_APDU_LENGTH = 0xFF;
 
     private static String APPLET_AID = "0102030405060708090102";
     private static byte[] APPLET_AID_BYTE = Util.hexStringToByteArray(APPLET_AID);
-
-    private final ArrayList<CommandAPDU> APDU_SET_N = new ArrayList<>();
-    private final ArrayList<CommandAPDU> APDU_SET_D = new ArrayList<>();
 
     private static final CardManager cardMgr = new CardManager(APPLET_AID_BYTE);
 
@@ -72,29 +67,6 @@ public class ClientSignAPDU {
      * @throws Exception
      */
     public ClientSignAPDU(boolean realCard) throws Exception {
-        try (InputStream in = new FileInputStream(CLIENT_KEY_CLIENT_SHARE_FILE)) {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-
-            byte[] num = Util.hexStringToByteArray(reader.readLine());
-            BigInteger d = new BigInteger(1, num);
-
-            setNumber(APDU_SET_D, num, INS_SET_KEYS, P1_SET_D);
-
-            num = Util.hexStringToByteArray(reader.readLine());
-            n = new BigInteger(1, num);
-
-            if (num.length != CLIENT_ARR_LENGTH)
-                throw new IllegalArgumentException("Modulus is not a 256-bit number.");
-
-            if (d.compareTo(n) > 0)
-                throw new IllegalArgumentException("Private key cannot be larger than modulus.");
-
-            setNumber(APDU_SET_N, num, INS_SET_KEYS, P1_SET_N);
-
-            if (reader.readLine() != null)
-                throw new IOException(String.format("Wrong '%s' file format.", CLIENT_KEY_CLIENT_SHARE_FILE));
-        }
-
         final RunConfig runCfg = RunConfig.getDefaultConfig();
 
         if (realCard)
@@ -151,6 +123,32 @@ public class ClientSignAPDU {
      * @throws Exception
      */
     public void setKeys() throws Exception {
+        ArrayList<CommandAPDU> APDU_SET_N = new ArrayList<>();
+        ArrayList<CommandAPDU> APDU_SET_D = new ArrayList<>();
+
+        try (InputStream in = new FileInputStream(CLIENT_KEY_CLIENT_SHARE_FILE)) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+
+            byte[] num = Util.hexStringToByteArray(reader.readLine());
+            BigInteger d = new BigInteger(1, num);
+
+            setNumber(APDU_SET_D, num, INS_SET_KEYS, P1_SET_D);
+
+            num = Util.hexStringToByteArray(reader.readLine());
+            BigInteger n = new BigInteger(1, num);
+
+            if (num.length != CLIENT_ARR_LENGTH)
+                throw new IllegalArgumentException("Modulus is not a 256-bit number.");
+
+            if (d.compareTo(n) > 0)
+                throw new IllegalArgumentException("Private key cannot be larger than modulus.");
+
+            setNumber(APDU_SET_N, num, INS_SET_KEYS, P1_SET_N);
+
+            if (reader.readLine() != null)
+                throw new IOException(String.format("Wrong '%s' file format.", CLIENT_KEY_CLIENT_SHARE_FILE));
+        }
+
         transmitNumber(APDU_SET_D, "Set D");
         transmitNumber(APDU_SET_N, "Set N");
     }
@@ -170,8 +168,7 @@ public class ClientSignAPDU {
             message = reader.readLine();
             byte[] num = Util.hexStringToByteArray(message);
 
-            BigInteger m = new BigInteger(num);
-            if (m.compareTo(n) > 0)
+            if (num.length > CLIENT_ARR_LENGTH)
                 throw new IllegalArgumentException("Message key cannot be larger than modulus.");
 
             setNumber(APDU_MESSAGE, num, INS_SET_MESSAGE, NONE);

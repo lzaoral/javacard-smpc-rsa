@@ -661,18 +661,31 @@ public class ClientFullTest {
             Assert.assertNotNull(responseAPDU);
             Assert.assertEquals(SW_OK, responseAPDU.getSW());
 
-            Process serverProc = new ProcessBuilder(TEST_PATH + "main_server")
-                    .redirectError(ProcessBuilder.Redirect.INHERIT).start();
+            Process serverProc = new ProcessBuilder(TEST_PATH + "smpc_rsa", "server", "generate")
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+                    .start();
 
             try (OutputStream stdin = serverProc.getOutputStream()) {
-                stdin.write("1\ny\n2\n0\n".getBytes());
+                stdin.write("y".getBytes());
                 stdin.flush();
             }
 
             serverProc.waitFor();
 
-            if (!realCard)
-                Assert.assertEquals(0, serverProc.exitValue());
+
+            if (serverProc.exitValue() != 0)
+                System.out.println("NOK Wrong modulus generated.");
+
+            serverProc = new ProcessBuilder(TEST_PATH + "smpc_rsa", "server", "sign")
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+                    .start();
+
+            serverProc.waitFor();
+
+
+            Assert.assertEquals(serverProc.exitValue(), 0);
 
             System.out.println(serverProc.exitValue() == 0 ? "OK" : "NOK");
         }

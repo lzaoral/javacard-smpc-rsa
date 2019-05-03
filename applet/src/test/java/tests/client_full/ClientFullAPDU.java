@@ -124,9 +124,13 @@ public class ClientFullAPDU {
      * @throws CardException
      */
     public ResponseAPDU generateKeys() throws CardException {
-        return cardMgr.transmit(new CommandAPDU(
+        ResponseAPDU res = cardMgr.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GENERATE_KEYS, NONE, NONE
         ));
+
+        handleError(res, "Key generation");
+
+        return res;
     }
 
     /**
@@ -142,7 +146,7 @@ public class ClientFullAPDU {
         ResponseAPDU n = cardMgr.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GET_KEYS, P1_GET_N, NONE, CLIENT_ARR_LENGTH
         ));
-        handleError(dServer, "Get n");
+        handleError(n, "Get n");
 
         try (OutputStream out = new FileOutputStream(CLIENT_KEY_SERVER_SHARE_FILE)) {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));

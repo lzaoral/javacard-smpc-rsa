@@ -9,7 +9,6 @@ import javacard.framework.JCSystem;
 import javacard.security.*;
 
 import javacardx.crypto.Cipher;
-import org.bouncycastle.jcajce.provider.asymmetric.RSA;
 import smpc_rsa.jcmathlib.Bignat;
 import smpc_rsa.jcmathlib.Bignat_Helper;
 import smpc_rsa.jcmathlib.ECConfig;
@@ -31,12 +30,14 @@ public class RSAServer extends Applet {
 
     private static final byte INS_SIGNATURE = 0x18;
 
+    //TODO: reset
+
     private static boolean generatedKeys = false;
     private static final short ARR_SIZE = 256;
 
     private static final byte[] E = new byte[]{0x01, 0x00, 0x01};
 
-    private final Bignat tmpBignatSmall1, tmpBignatSmall2, tmpBignatBig;
+    private final Bignat tmpBignatSmall1, tmpBignatSmall2, tmpBignatBig, clientSignature;
 
     private final Bignat SGN;
     private byte[] tmpBuffer;
@@ -52,11 +53,10 @@ public class RSAServer extends Applet {
     private final RSAPrivateKey serverPrivateKey;
     private final RSAPublicKey serverPublicKey;
 
-
-
     private final Cipher rsa;
 
     private final byte[] keyState = new byte[2];
+    private final byte[] sigState = new byte[2];
 
     public static void install(byte[] bArray, short bOffset, byte bLength) {
         new RSAServer(bArray, bOffset, bLength);
@@ -70,6 +70,7 @@ public class RSAServer extends Applet {
         tmpBignatSmall2 = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_PERSISTENT, bignatHelper);
         tmpBignatBig = new Bignat((short) (ARR_SIZE * 2), JCSystem.MEMORY_TYPE_PERSISTENT, bignatHelper);
         SGN = new Bignat((short) (ARR_SIZE * 2), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        clientSignature = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
 
         tmpBuffer = JCSystem.makeTransientByteArray(ARR_SIZE, JCSystem.CLEAR_ON_RESET);
 
@@ -146,25 +147,25 @@ public class RSAServer extends Applet {
                 ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
         byte[] apduBuffer = apdu.getBuffer();
-            switch (apduBuffer[ISO7816.OFFSET_P1]) {
-                case P1_SET_D1_SERVER:
-                    if (keyState[P1_SET_D1_SERVER] == Common.DATA_LOADED)
-                        ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+        switch (apduBuffer[ISO7816.OFFSET_P1]) {
+            case P1_SET_D1_SERVER:
+                if (keyState[P1_SET_D1_SERVER] == Common.DATA_LOADED)
+                    ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-                    Common.setNumber(apdu, tmpBuffer);
-                    updateKey(apdu);
-                    break;
+                Common.setNumber(apdu, tmpBuffer);
+                updateKey(apdu);
+                break;
 
-                case P1_SET_N1:
-                    if (keyState[P1_SET_D1_SERVER] != Common.DATA_LOADED)
-                        ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+            case P1_SET_N1:
+                if (keyState[P1_SET_D1_SERVER] != Common.DATA_LOADED)
+                    ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-                    if (keyState[P1_SET_N1] == Common.DATA_LOADED)
-                        ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+                if (keyState[P1_SET_N1] == Common.DATA_LOADED)
+                    ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-                    Common.setNumber(apdu, tmpBuffer);
-                    updateKey(apdu);
-                    break;
+                Common.setNumber(apdu, tmpBuffer);
+                updateKey(apdu);
+                break;
 
             default:
                 ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
@@ -195,6 +196,37 @@ public class RSAServer extends Applet {
     }
 
     private void setClientSignature(APDU apdu) {
+        // if (!nRetrieved)
+        //     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+
+        byte[] apduBuffer = apdu.getBuffer();
+        byte p1 = apduBuffer[ISO7816.OFFSET_P1];
+        byte p2 = apduBuffer[ISO7816.OFFSET_P2];
+        switch (p1) {
+            case P1_SET_SIGNATURE:
+                if (keyState[P1_SET_SIGNATURE] == Common.DATA_LOADED)
+                    ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+
+                Common.setNumber(apdu, clientSignature.as_byte_array());
+                updateKey(apdu);
+                break;
+
+            case P1_SET_MESSAGE:
+                if (keyState[P1_SET_D1_SERVER] != Common.DATA_LOADED)
+                    ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+
+                if (keyState[P1_SET_N1] == Common.DATA_LOADED)
+                    ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+
+                Common.setNumber(apdu, tmpBuffer);
+                updateKey(apdu);
+                break;
+
+            default:
+                ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+        }
+
+        keyState[p1] = Common.updateLoadState(keyState[p1], p2);
     }
 
     private void getPublicModulus(APDU apdu) {
@@ -237,6 +269,8 @@ public class RSAServer extends Applet {
         rsa.init(clientPrivateKey, Cipher.MODE_DECRYPT);
         rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, tmpBignatSmall1.as_byte_array(), (short) 0);
 
+        clientSignature.mult(clientSignature, tmpBignatSmall1);
+
         rsa.init(clietPublicKey, Cipher.MODE_ENCRYPT);
         rsa.doFinal(tmpBignatSmall1.as_byte_array(), (short) 0, tmpBignatSmall1.length(), tmpBignatSmall2.as_byte_array(), (short) 0);
 
@@ -266,9 +300,6 @@ public class RSAServer extends Applet {
         s += s1;
         */
     }
-
-
-
 
     /**
      * TODO:
