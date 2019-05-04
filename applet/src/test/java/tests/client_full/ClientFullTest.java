@@ -3,9 +3,9 @@ package tests.client_full;
 import javacard.framework.ISO7816;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
-import java.io.OutputStream;
+import java.io.*;
 
-import org.testng.Assert;
+import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -21,7 +21,7 @@ import static tests.client_full.ClientFullAPDU.*;
  */
 public class ClientFullTest {
 
-    private static final int TEST_COUNT = 1000;
+    private static final int TEST_COUNT = 0;
     private static final int SW_OK = 0x9000;
 
     private static boolean realCard = false;
@@ -35,6 +35,7 @@ public class ClientFullTest {
     @BeforeMethod
     public void setUp() throws Exception {
         client.transmit(new CommandAPDU(CLA_RSA_SMPC_CLIENT, INS_RESET, 0x00, 0x00));
+        client.setDebug(true);
     }
 
     @Test
@@ -645,6 +646,15 @@ public class ClientFullTest {
 
     @Test
     public void signStressTest() throws Exception {
+        ProcessBuilder serverGenerate = new ProcessBuilder("./../smpc_rsa", "server", "generate").directory(new File(TEST_PATH));
+        ProcessBuilder serverSign = new ProcessBuilder("./../smpc_rsa", "server", "sign").directory(new File(TEST_PATH));
+        ProcessBuilder serverVerify = new ProcessBuilder("./../smpc_rsa", "server", "verify").directory(new File(TEST_PATH));
+
+        client.setDebug(false);
+
+        int nokGenCount = 0;
+        int nokSignCount = 0;
+
         for (int i = 1; i <= TEST_COUNT; i++) {
             System.out.printf("TEST %d: ", i);
             System.out.flush();
@@ -661,34 +671,49 @@ public class ClientFullTest {
             Assert.assertNotNull(responseAPDU);
             Assert.assertEquals(SW_OK, responseAPDU.getSW());
 
-            Process serverProc = new ProcessBuilder(TEST_PATH + "smpc_rsa", "server", "generate")
-                    .redirectError(ProcessBuilder.Redirect.INHERIT)
-                    .redirectOutput(ProcessBuilder.Redirect.INHERIT)
-                    .start();
+            Process serverGenProc = serverGenerate.start();
+            final BufferedReader errReader = new BufferedReader(
+                    new InputStreamReader(new BufferedInputStream(serverGenProc.getErrorStream()))
+            );
 
-            try (OutputStream stdin = serverProc.getOutputStream()) {
-                stdin.write("y".getBytes());
-                stdin.flush();
+            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(
+                    new BufferedOutputStream(serverGenProc.getOutputStream())
+            );
+            outputStreamWriter.write("y\n");
+            outputStreamWriter.flush();
+
+            if (serverGenProc.waitFor() != 0) {
+                String line;
+                while ((line = errReader.readLine()) != null) {
+                    System.out.println(line);
+                }
+
+                nokGenCount++;
+                continue;
             }
 
-            serverProc.waitFor();
+            Process serverSignProc = serverSign.start();
+            final BufferedReader errReader1 = new BufferedReader(
+                    new InputStreamReader(new BufferedInputStream(serverSignProc.getErrorStream()))
+            );
 
+            if (serverSignProc.waitFor() != 0) {
+                String line;
+                while ((line = errReader1.readLine()) != null) {
+                    System.out.println(line);
+                }
 
-            if (serverProc.exitValue() != 0)
-                System.out.println("NOK Wrong modulus generated.");
+                nokSignCount++;
+                continue;
+            }
 
-            serverProc = new ProcessBuilder(TEST_PATH + "smpc_rsa", "server", "sign")
-                    .redirectError(ProcessBuilder.Redirect.INHERIT)
-                    .redirectOutput(ProcessBuilder.Redirect.INHERIT)
-                    .start();
-
-            serverProc.waitFor();
-
-
-            Assert.assertEquals(serverProc.exitValue(), 0);
-
-            System.out.println(serverProc.exitValue() == 0 ? "OK" : "NOK");
+            Assert.assertEquals(0, serverVerify.start().waitFor());
+            System.out.println("\u001B[1;32mOK\u001B[0m");
         }
+
+        System.out.printf("Result: Generate/Sign/All: %d/%d/%d (%.02f %% failed)",
+                nokGenCount, nokSignCount, TEST_COUNT, (double) (nokGenCount + nokSignCount) * 100 / TEST_COUNT
+        );
     }
 
 }

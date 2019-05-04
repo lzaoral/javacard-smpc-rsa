@@ -194,6 +194,10 @@ public class ClientSignAPDU {
         return res;
     }
 
+    public void setDebug(boolean isDebug) {
+        cardMgr.setbDebug(isDebug);
+    }
+
     /**
      *
      * @param cmd

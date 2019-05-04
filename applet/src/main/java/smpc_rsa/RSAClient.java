@@ -172,8 +172,6 @@ public class RSAClient extends Applet {
         privateKey.setExponent(tmpBuffer, (short) 1, (short) (tmpBuffer.length - 1));
         rsa.init(privateKey, Cipher.MODE_DECRYPT);
 
-        nSent = false;
-        d1ServerSent = false;
         Common.clearByteArray(tmpBuffer);
     }
 
@@ -185,10 +183,6 @@ public class RSAClient extends Applet {
      */
     private void reset(APDU apdu) {
         Common.checkZeroP1P2(apdu.getBuffer());
-
-        byte[] apduBuffer = apdu.getBuffer();
-        if (apduBuffer[ISO7816.OFFSET_P1] != 0x00 || apduBuffer[ISO7816.OFFSET_P2] != 0x00)
-            ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
         privateKey.clearKey();
 

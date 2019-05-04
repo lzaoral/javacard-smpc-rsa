@@ -56,7 +56,7 @@ public class Common {
         short lc = (short) (apduBuffer[ISO7816.OFFSET_LC] & MAX_COMMAND_APDU_LENGTH);
         // get part number (p2 & 0x0F)
         short position = (short) (target.length - ((p2 & 0x0F) * MAX_COMMAND_APDU_LENGTH + lc));
-        javacard.framework.Util.arrayCopyNonAtomic(apduBuffer, ISO7816.OFFSET_CDATA, target, position, lc);
+        Util.arrayCopyNonAtomic(apduBuffer, ISO7816.OFFSET_CDATA, target, position, lc);
     }
 
     /**

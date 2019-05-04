@@ -12,10 +12,12 @@ import java.nio.ByteBuffer;
 public class SimulatedCardChannelLocal extends CardChannel {
     JavaxSmartCardInterface m_simulator;
     SimulatedCard m_card;
+    boolean m_is_debug;
     
-    SimulatedCardChannelLocal (JavaxSmartCardInterface simulator) {
+    SimulatedCardChannelLocal (JavaxSmartCardInterface simulator, boolean isDebug) {
         m_simulator = simulator;
         m_card = new SimulatedCard();
+        m_is_debug = isDebug;
     }
 
     @Override
@@ -33,9 +35,11 @@ public class SimulatedCardChannelLocal extends CardChannel {
         ResponseAPDU responseAPDU = null;
 
         try {
-            log(apdu);
+            if (m_is_debug)
+                log(apdu);
             responseAPDU = this.m_simulator.transmitCommand(apdu);
-            log(responseAPDU);
+            if (m_is_debug)
+                log(responseAPDU);
             // TODO: Add delay corresponding to real cards
             //int delay = OperationTimes.getCardOperationDelay(apdu);
             //Thread.sleep(delay);

@@ -32,15 +32,15 @@ public class ServerAPDU {
 
     private static final byte INS_GENERATE_KEYS = 0x10;
     private static final byte INS_SET_CLIENT_KEYS = 0x12;
-    private static final byte P1_SET_N1 = 0x11;
-    private static final byte P1_SET_D1_SERVER = 0x12;
     private static final byte INS_GET_PUBLIC_N = 0x14;
     private static final byte INS_SET_CLIENT_SIGNATURE = 0x16;
-
-    private static final byte P1_SET_MESSAGE = 0x05;
-    private static final byte P1_SET_SIGNATURE = 0x06;
-
     private static final byte INS_SIGNATURE = 0x18;
+
+    private static final byte P1_SET_N1 = 0x00;
+    private static final byte P1_SET_D1_SERVER = 0x01;
+
+    private static final byte P1_SET_MESSAGE = 0x00;
+    private static final byte P1_SET_SIGNATURE = 0x01;
 
     public static final byte P2_PART_0 = 0x00;
     public static final byte P2_PART_1 = 0x01;
@@ -52,7 +52,7 @@ public class ServerAPDU {
     public static final short CLIENT_ARR_LENGTH = 256;
     private static final short MAX_APDU_LENGTH = 0xFF;
 
-    public static final String TEST_PATH = "src/test/java/tests/client_full/";
+    public static final String TEST_PATH = "src/test/java/tests/server/";
     public static final String CLIENT_KEY_SERVER_SHARE_FILE = TEST_PATH + "for_server.key";
     public static final String MESSAGE_FILE = TEST_PATH + "message.txt";
     public static final String CLIENT_SHARE_SIG_FILE = TEST_PATH + "client.sig";
@@ -168,11 +168,11 @@ public class ServerAPDU {
 
         // zjednodusit
         res.add(transmit(new CommandAPDU(
-            CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_N, P2_PART_0, 0x00
+            CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_N, 0x00, P2_PART_0
         )));
 
         res.add(transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_N, P2_PART_1, 0x00
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_N, 0x00, P2_PART_1
         )));
 
         return res;
@@ -188,18 +188,16 @@ public class ServerAPDU {
 
             message = reader.readLine();
             byte[] num = Util.hexStringToByteArray(message);
-            BigInteger d = new BigInteger(1, num);
+
+            if (num.length > CLIENT_ARR_LENGTH)
+                throw new IllegalArgumentException("Message cannot be larger than the modulus.");
 
             setNumber(APDU_SET_MESSAGE, num, INS_SET_CLIENT_SIGNATURE, P1_SET_MESSAGE);
 
             num = Util.hexStringToByteArray(reader.readLine());
-            BigInteger n = new BigInteger(1, num);
 
-            if (num.length != CLIENT_ARR_LENGTH)
-                throw new IllegalArgumentException("Modulus is not a 256-bit number.");
-
-            if (d.compareTo(n) > 0)
-                throw new IllegalArgumentException("Private key cannot be larger than modulus.");
+            if (num.length > CLIENT_ARR_LENGTH)
+                throw new IllegalArgumentException("Client signature share cannot be larger than the modulus.");
 
             setNumber(APDU_SET_CLIENT_SIGNATURE, num, INS_SET_CLIENT_SIGNATURE, P1_SET_SIGNATURE);
 

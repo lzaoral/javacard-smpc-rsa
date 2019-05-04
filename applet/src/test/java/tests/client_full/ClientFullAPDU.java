@@ -23,6 +23,8 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import static tests.Common.*;
+
 /**
  * Test class.
  * Note: If simulator cannot be started try adding "-noverify" JVM parameter
@@ -49,9 +51,9 @@ public class ClientFullAPDU {
     public static final byte NONE = 0x00;
 
     public static final String TEST_PATH = "src/test/java/tests/client_full/";
-    public static final String CLIENT_KEY_SERVER_SHARE_FILE = TEST_PATH + "for_server.key";
-    public static final String MESSAGE_FILE = TEST_PATH + "message.txt";
-    public static final String CLIENT_SHARE_SIG_FILE = TEST_PATH + "client.sig";
+    public static final String CLIENT_KEY_SERVER_SHARE_FILE = TEST_PATH + CLIENT_KEYS_SERVER_FILE;
+    public static final String MESSAGE_FILES = TEST_PATH + MESSAGE_FILE;
+    public static final String CLIENT_SHARE_SIG_FILE = TEST_PATH + CLIENT_SIG_SHARE_FILE;
 
     public static final short CLIENT_ARR_LENGTH = 256;
     private static final short MAX_APDU_LENGTH = 0xFF;
@@ -158,6 +160,10 @@ public class ClientFullAPDU {
         }
     }
 
+    public void setDebug(boolean debug) {
+        cardMgr.setbDebug(debug);
+    }
+
     /**
      *
      * @return
@@ -167,7 +173,7 @@ public class ClientFullAPDU {
         ArrayList<CommandAPDU> APDU_MESSAGE = new ArrayList<>();
         String message;
 
-        try (InputStream in = new FileInputStream(MESSAGE_FILE)) {
+        try (InputStream in = new FileInputStream(MESSAGE_FILES)) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
             message = reader.readLine();
@@ -191,9 +197,11 @@ public class ClientFullAPDU {
         ));
         handleError(res, "Signing");
 
+        String data = Util.toHex(Util.trimLeadingZeroes(res.getData()));
+
         try (OutputStream out = new FileOutputStream(CLIENT_SHARE_SIG_FILE)) {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
-            writer.write(String.format("%s%n%s%n", message, Util.toHex(Util.trimLeadingZeroes(res.getData()))));
+            writer.write(String.format("%s%n%s%n", message, data));
             writer.flush();
         }
 

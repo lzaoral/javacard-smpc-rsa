@@ -1,7 +1,10 @@
 package tests.server;
 
+import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+
+import javax.smartcardio.ResponseAPDU;
 
 /**
  * Example test class for the applet
@@ -27,9 +30,12 @@ public class ServerTest {
 
     @Test
     public void simpleSign() throws Exception {
-        server.generateKeys();
+        Assert.assertEquals(SW_OK, server.generateKeys().getSW());
         server.setClientKeys();
-        server.getPublicModulus();
-        server.signMessage();
+
+        for (ResponseAPDU res : server.getPublicModulus())
+            Assert.assertEquals(SW_OK, res.getSW());
+
+        Assert.assertEquals(SW_OK,server.signMessage().getSW());
     }
 }
