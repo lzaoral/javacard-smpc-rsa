@@ -273,6 +273,7 @@ public class RSAServer extends Applet {
         rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, tmpBignatSmall1.as_byte_array(), (short) 0);
 
         Bignat lol = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        Bignat lol2 = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
         clientPrivateKey.getModulus(lol.as_byte_array(), (short) 0);
 
         tmpBignatSmall2.mod_mult(clientSignature, tmpBignatSmall1, lol);
@@ -291,8 +292,10 @@ public class RSAServer extends Applet {
         clientPrivateKey.getModulus(tmpBignatSmall2.as_byte_array(), (short) 0);
         serverPrivateKey.getModulus(lol.as_byte_array(), (short) 0);
 
+        inverse(tmpBignatSmall2, lol, lol2, bignatHelper);
+
         SGN.subtract(tmpBignatSmall1);
-        SGN.mod_mult(SGN, inverse(tmpBignatSmall2, lol, bignatHelper), lol);
+        SGN.mod_mult(SGN, lol2, lol);
         SGN.mult(SGN, lol);
         SGN.add(tmpBignatSmall1);
 
@@ -321,6 +324,7 @@ public class RSAServer extends Applet {
         newA.copy(a);
         newB.copy(b);
 
+        //TODO: nicer
         while (!newB.is_zero()) {
             tmp.clone(newB);
             newA.mod(newB);
@@ -338,7 +342,7 @@ public class RSAServer extends Applet {
      * @param bh
      * @return
      */
-    public static Bignat inverse(Bignat a, Bignat n, /*Bignat res,*/ Bignat_Helper bh) {
+    public static void inverse(Bignat a, Bignat n, Bignat res, Bignat_Helper bh) {
         Bignat t = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
         Bignat r = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
         Bignat newT = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
@@ -349,36 +353,103 @@ public class RSAServer extends Applet {
         Bignat bak = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
         Bignat helper = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
 
-        r.copy(n);
+        r.clone(n);
         newT.one();
-        newR.copy(a);
+        newR.clone(a);
+
+        // true +/0; false -
+        boolean tSgn = true;
+        boolean rSgn = true;
+        boolean newTSgn = true;
+        boolean newRSgn = true;
+        boolean quotientSgn = true;
+        boolean bakSgn = true;
+        boolean helperSgn = true;
+
+//    function inverse(a, n)
+//    t := 0;     newt := 1;
+//    r := n;     newr := a;
+//    while newr ≠ 0
+//        quotient := r div newr
+//        (t, newt) := (newt, t - quotient * newt)
+//        (r, newr) := (newr, r - quotient * newr)
+//    if r > 1 then return "a is not invertible"
+//    if t < 0 then t := t + n
+//    return t
+
 
         while (!newR.is_zero()) {
-            quotient.remainder_divide(r, newR);
-
-            bak.clone(newR);
-            helper.mult(quotient, newR);
-            newR.clone(r);
-            newR.subtract(helper);
-            t.clone(bak);
+            helper.clone(r);
+            helper.remainder_divide(newR, quotient);
+            quotientSgn = rSgn == newRSgn || quotient.is_zero();
 
             bak.clone(newT);
+            bakSgn = newTSgn;
+
             helper.mult(quotient, newT);
+            helperSgn = quotientSgn == newTSgn || helper.is_zero();
+
             newT.clone(t);
-            newT.subtract(helper);
+            newTSgn = tSgn;
+
+            t.clone(bak);
+            tSgn = bakSgn;
+
+            if (newT.lesser(helper) && newTSgn && helperSgn) {
+                newTSgn = false;
+                helper.subtract(newT);
+                newT.clone(helper);
+            } else if (newT.lesser(helper) && !newTSgn && !helperSgn) {
+                newTSgn = true;
+                helper.subtract(newT);
+                newT.clone(helper);
+            } else if (newTSgn == helperSgn)
+                newT.subtract(helper);
+            else
+                newT.add(helper);
+
+            if (newT.is_zero())
+                newTSgn = true;
+
+            bak.clone(newR);
+            bakSgn = newRSgn;
+
+            helper.mult(quotient, newR);
+            helperSgn = quotientSgn == newRSgn || helper.is_zero();
+
+            newR.clone(r);
+            newRSgn = rSgn;
+
+            r.clone(bak);
+            rSgn = bakSgn;
+
+            if (newR.lesser(helper) && newRSgn && helperSgn) {
+                newRSgn = false;
+                helper.subtract(newR);
+                newR.clone(helper);
+            } else if (newR.lesser(helper) && !newRSgn && !helperSgn) {
+                newRSgn = true;
+                helper.subtract(newR);
+                newR.clone(helper);
+            } else if (newRSgn == helperSgn)
+                newR.subtract(helper);
+            else
+                newR.add(helper);
+
+            if (newR.is_zero())
+                newRSgn = true;
+        }
+
+        if (!r.lesser(Bignat_Helper.ONE) && !r.same_value(Bignat_Helper.ONE) && rSgn)
+            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+
+        if (!tSgn) {
+            bak.clone(n);
+            bak.subtract(t);
             t.clone(bak);
         }
 
-        helper.one();
-        if (r.lesser(helper) || r.same_value(helper))
-            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-
-        if (t.lesser(helper))
-            t.add(n);
-
-        return t;
-        //res.clone(t);
-        //return res;
+        res.clone(t);
     }
 
 }

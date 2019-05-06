@@ -37,5 +37,7 @@ public class ServerTest {
             Assert.assertEquals(SW_OK, res.getSW());
 
         Assert.assertEquals(SW_OK,server.signMessage().getSW());
+
+        //TODO: get signature
     }
 }

@@ -2005,12 +2005,12 @@ public class jcmathlib {
          * The size of speedup engine used for fast modulo exponent computation
          * (must be larger than biggest Bignat used)
          */
-        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 4097;
+        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 2048;
         /**
          * The size of speedup engine used for fast multiplication of large numbers
          * Must be larger than 2x biggest Bignat used
          */
-        public short MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 2049;
+        public short MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 4096;
         
         /**
          * If true, fast multiplication of large numbers via RSA engine can be used.
@@ -2073,7 +2073,7 @@ public class jcmathlib {
                 
         RSAPublicKey fnc_NmodE_pubKey;
         Cipher fnc_NmodE_cipher;
-        
+
         public static Bignat ONE;
         public static Bignat TWO;
         public static Bignat THREE;
@@ -2194,12 +2194,12 @@ public class jcmathlib {
          * The size of speedup engine used for fast modulo exponent computation
          * (must be larger than biggest Bignat used)
          */
-        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 2049;
+        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 2048;
         /**
          * The size of speedup engine used for fast multiplication of large numbers
          * Must be larger than 2x biggest Bignat used
          */
-        public short MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 4097;
+        public short MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 4096;
         /**
          * The size of largest integer used in computations
          */
