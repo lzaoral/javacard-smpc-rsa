@@ -35,6 +35,7 @@ public class ServerAPDU {
     private static final byte INS_GET_PUBLIC_N = 0x14;
     private static final byte INS_SET_CLIENT_SIGNATURE = 0x16;
     private static final byte INS_SIGNATURE = 0x18;
+    private static final byte INS_GET_SIGNATURE = 0x20;
 
     private static final byte P1_SET_N1 = 0x00;
     private static final byte P1_SET_D1_SERVER = 0x01;
@@ -56,6 +57,8 @@ public class ServerAPDU {
     public static final String CLIENT_KEY_SERVER_SHARE_FILE = TEST_PATH + "for_server.key";
     public static final String MESSAGE_FILE = TEST_PATH + "message.txt";
     public static final String CLIENT_SHARE_SIG_FILE = TEST_PATH + "client.sig";
+    public static final String PUBLIC_KEY_FILE = TEST_PATH + "public.key";
+    public static final String FINAL_SIG_FILE = TEST_PATH + "final.sig";
 
     private static String APPLET_AID = "0102030405060708090304";
     private static byte[] APPLET_AID_BYTE = Util.hexStringToByteArray(APPLET_AID);
@@ -175,6 +178,16 @@ public class ServerAPDU {
                 CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_N, 0x00, P2_PART_1
         )));
 
+        try (OutputStream out = new FileOutputStream(PUBLIC_KEY_FILE)) {
+            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+            writer.write(String.format("%s%n", "10001")); //todo hardcoded E
+            for (ResponseAPDU r: res) {
+                writer.write(Util.toHex(r.getData()));
+            }
+            writer.write(System.lineSeparator());
+            writer.flush();
+        }
+
         return res;
     }
 
@@ -208,13 +221,30 @@ public class ServerAPDU {
         transmitNumber(APDU_SET_MESSAGE);
         transmitNumber(APDU_SET_CLIENT_SIGNATURE);
 
-        ResponseAPDU res = cardMgr.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_SIGNATURE, NONE, NONE, CLIENT_ARR_LENGTH
+        ResponseAPDU res = transmit(new CommandAPDU(
+                CLA_RSA_SMPC_SERVER, INS_SIGNATURE, NONE, NONE
         ));
 
-        try (OutputStream out = new FileOutputStream(CLIENT_SHARE_SIG_FILE)) {
+        //response check
+
+        ArrayList<ResponseAPDU> responses = new ArrayList<>();
+        responses.add(transmit(new CommandAPDU(
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, 0x00, P2_PART_0
+        )));
+
+        responses.add(transmit(new CommandAPDU(
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, 0x00, P2_PART_1
+        )));
+
+        try (OutputStream out = new FileOutputStream(FINAL_SIG_FILE)) {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
-            writer.write(String.format("%s%n%s%n", message, Util.toHex(Util.trimLeadingZeroes(res.getData()))));
+            writer.write(String.format("%s%n", message));
+
+            for (ResponseAPDU r:responses) {
+                writer.write(Util.toHex(r.getData()));
+            }
+
+            writer.write(System.lineSeparator());
             writer.flush();
         }
 

@@ -1576,7 +1576,7 @@ public class jcmathlib {
             bnh.fnc_mod_mult_tmpThis.lock();
             bnh.fnc_mod_mult_tmpThis.resize_to_max(false);
             // Perform fast multiplication using RSA trick
-            bnh.fnc_mod_mult_tmpThis.mult(x, y);        
+            bnh.fnc_mod_mult_tmpThis.mult(x, y);
             // Compute modulo 
             bnh.fnc_mod_mult_tmpThis.mod(modulo);
             bnh.fnc_mod_mult_tmpThis.shrink();
@@ -2005,7 +2005,7 @@ public class jcmathlib {
          * The size of speedup engine used for fast modulo exponent computation
          * (must be larger than biggest Bignat used)
          */
-        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 2048;
+        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 4096;
         /**
          * The size of speedup engine used for fast multiplication of large numbers
          * Must be larger than 2x biggest Bignat used
@@ -2160,20 +2160,26 @@ public class jcmathlib {
             fnc_mult_pubkey_pow2 = (RSAPublicKey) fnc_mult_keypair.getPublic();
             //mult_privkey_pow2 = (RSAPrivateCrtKey) mult_keypair.getPrivate();
             fnc_mult_pubkey_pow2.setExponent(CONST_TWO, (short) 0, (short) CONST_TWO.length);
+
+            // lukas
+            Bignat FF = new Bignat((short) (MULT_RSA_ENGINE_MAX_LENGTH_BITS / 8), JCSystem.MEMORY_TYPE_PERSISTENT, this);
+            Util.arrayFillNonAtomic(FF.as_byte_array(), (short) 0, FF.size, (byte) 0xFF);
+            fnc_mult_pubkey_pow2.setModulus(FF.as_byte_array(), (short) 0, FF.size);
+            // lukas
+
             fnc_mult_cipher = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
     
             hashEngine = rm.hashEngine;
     
             FLAG_FAST_MULT_VIA_RSA = false; // set true only if succesfully allocated and tested below
-            try { // Subsequent code may fail on some real (e.g., Infineon CJTOP80K) cards - catch exception
+            try { // Subsequent code may fail on some real (e.g., Infineon CJTOP80K) cards - catch
                 fnc_mult_cipher.init(fnc_mult_pubkey_pow2, Cipher.MODE_ENCRYPT);
                 // Try operation - if doesn't work, exception SW_CANTALLOCATE_BIGNAT is emitted
                 Util.arrayFillNonAtomic(fnc_mult_resultArray1, (short) 0, (short) fnc_mult_resultArray1.length, (byte) 6);
                 fnc_mult_cipher.doFinal(fnc_mult_resultArray1, (short) 0, (short) fnc_mult_resultArray1.length, fnc_mult_resultArray1, (short) 0);
-                FLAG_FAST_MULT_VIA_RSA = true;
-            } catch (Exception ignored) {
-            } // discard exception                
-        }    
+                //FLAG_FAST_MULT_VIA_RSA = true;
+            } catch (Exception ignored) {} // discard exception
+        }
         
         /**
          * Erase all values stored in helper objects
@@ -2194,7 +2200,7 @@ public class jcmathlib {
          * The size of speedup engine used for fast modulo exponent computation
          * (must be larger than biggest Bignat used)
          */
-        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 2048;
+        public short MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 4096;
         /**
          * The size of speedup engine used for fast multiplication of large numbers
          * Must be larger than 2x biggest Bignat used

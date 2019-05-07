@@ -209,4 +209,29 @@ public class Common {
             i--;
         }
     }
+
+    /**
+     * TODO: tralala
+     * @param a
+     * @param b
+     * @return
+     */
+    public static boolean lesser(byte[] a, byte[] b) {
+        short j = (short) (b.length - a.length);
+        short a_short, b_short;
+
+        for (short i = 0; i < a.length; i++, j++) {
+            a_short = (short) (a[i] & DIGIT_MASK);
+            b_short = j >= 0 && j < b.length ? (short) (b[j] & DIGIT_MASK) : 0;
+
+            if (a_short < b_short)
+                return true;
+
+            if (a_short > b_short)
+                return false;
+
+        }
+
+        return false;
+    }
 }

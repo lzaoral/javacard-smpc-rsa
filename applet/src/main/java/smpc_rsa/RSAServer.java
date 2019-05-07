@@ -23,6 +23,7 @@ public class RSAServer extends Applet {
     private static final byte INS_GET_PUBLIC_N = 0x14;
     private static final byte INS_SET_CLIENT_SIGNATURE = 0x16;
     private static final byte INS_SIGNATURE = 0x18;
+    private static final byte INS_GET_SIGNATURE = 0x20;
 
     private static final byte P1_SET_N1 = 0x00;
     private static final byte P1_SET_D1_SERVER = 0x01;
@@ -95,6 +96,12 @@ public class RSAServer extends Applet {
 
         byte[] apduBuffer = apdu.getBuffer();
 
+        /*
+        tmpBignatSmall1.from_byte_array(new byte[]{0x08, (byte) 0x9D, (byte) 0xAE});
+        tmpBignatSmall2.from_byte_array(new byte[]{(byte) 0x83, 0x78, 0x0A, 0x59, (byte) 0xC9});
+        inverse(tmpBignatSmall1, tmpBignatSmall2, tmpBignatBig, bignatHelper);
+        */
+
         if (apduBuffer[ISO7816.OFFSET_CLA] != CLA_RSA_SMPC_SERVER)
             ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
 
@@ -119,11 +126,39 @@ public class RSAServer extends Applet {
                 signRSAMessage(apdu);
                 break;
 
+            case INS_GET_SIGNATURE:
+                getFinalSignature(apdu);
+                break;
+
             default:
                 ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
         }
     }
 
+    private void getFinalSignature(APDU apdu) {
+        byte[] apduBuffer = apdu.getBuffer();
+        if (apduBuffer[ISO7816.OFFSET_P1] != 0x00)
+            ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+
+        // TODO: check that is has been received + SGN
+        // TODO: check part
+        switch (apduBuffer[ISO7816.OFFSET_P2]) {
+            case Common.P2_PART_0:
+                Common.sendNum(apdu, SGN.as_byte_array(), (short) 0, false);
+                break;
+
+            case Common.P2_PART_1:
+                Common.sendNum(apdu, SGN.as_byte_array(), ARR_SIZE, false);
+                break;
+
+            default:
+                ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+        }
+
+
+        // after check
+        // tmpBignatBig.erase();
+    }
 
 
     private void generateRSAKeys(APDU apdu) {
@@ -268,12 +303,16 @@ public class RSAServer extends Applet {
     }
 
     private void signRSAMessage(APDU apdu) {
+
+        // TODO test na nulovost!!!
+
         // TODO init elsewhere
         rsa.init(clientPrivateKey, Cipher.MODE_DECRYPT);
         rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, tmpBignatSmall1.as_byte_array(), (short) 0);
 
         Bignat lol = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
         Bignat lol2 = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        Bignat lol3 = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
         clientPrivateKey.getModulus(lol.as_byte_array(), (short) 0);
 
         tmpBignatSmall2.mod_mult(clientSignature, tmpBignatSmall1, lol);
@@ -287,18 +326,18 @@ public class RSAServer extends Applet {
             ISOException.throwIt(ISO7816.SW_DATA_INVALID);
 
         rsa.init(serverPrivateKey, Cipher.MODE_DECRYPT);
-        rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, SGN.as_byte_array(), ARR_SIZE);
+        rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, lol3.as_byte_array(), (short) 0);
 
         clientPrivateKey.getModulus(tmpBignatSmall2.as_byte_array(), (short) 0);
         serverPrivateKey.getModulus(lol.as_byte_array(), (short) 0);
 
         inverse(tmpBignatSmall2, lol, lol2, bignatHelper);
 
-        SGN.subtract(tmpBignatSmall1);
-        SGN.mod_mult(SGN, lol2, lol);
-        SGN.mult(SGN, lol);
+        lol3.subtract(tmpBignatSmall1);
+        tmpBignatBig.mod_mult(lol3, lol2, lol);
+        SGN.clone(lol3);
+        SGN.mult(tmpBignatBig, lol);
         SGN.add(tmpBignatSmall1);
-
 
         /*
         // Compute the full signature
@@ -351,11 +390,14 @@ public class RSAServer extends Applet {
         Bignat quotient = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
 
         Bignat bak = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
-        Bignat helper = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
+        Bignat helper = new Bignat((short) (ARR_SIZE*2), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bh);
 
-        r.clone(n);
+        r.copy(n);
         newT.one();
-        newR.clone(a);
+        newR.copy(a);
+
+        if (r.lesser(newR))
+            newR.subtract(r);
 
         // true +/0; false -
         boolean tSgn = true;
@@ -379,17 +421,17 @@ public class RSAServer extends Applet {
 
 
         while (!newR.is_zero()) {
-            helper.clone(r);
+            helper.copy(r);
             helper.remainder_divide(newR, quotient);
             quotientSgn = rSgn == newRSgn || quotient.is_zero();
 
-            bak.clone(newT);
+            bak.copy(newT);
             bakSgn = newTSgn;
 
             helper.mult(quotient, newT);
             helperSgn = quotientSgn == newTSgn || helper.is_zero();
 
-            newT.clone(t);
+            newT.copy(t);
             newTSgn = tSgn;
 
             t.clone(bak);
@@ -398,11 +440,11 @@ public class RSAServer extends Applet {
             if (newT.lesser(helper) && newTSgn && helperSgn) {
                 newTSgn = false;
                 helper.subtract(newT);
-                newT.clone(helper);
+                newT.copy(helper);
             } else if (newT.lesser(helper) && !newTSgn && !helperSgn) {
                 newTSgn = true;
                 helper.subtract(newT);
-                newT.clone(helper);
+                newT.copy(helper);
             } else if (newTSgn == helperSgn)
                 newT.subtract(helper);
             else
@@ -411,13 +453,13 @@ public class RSAServer extends Applet {
             if (newT.is_zero())
                 newTSgn = true;
 
-            bak.clone(newR);
+            bak.copy(newR);
             bakSgn = newRSgn;
 
             helper.mult(quotient, newR);
             helperSgn = quotientSgn == newRSgn || helper.is_zero();
 
-            newR.clone(r);
+            newR.copy(r);
             newRSgn = rSgn;
 
             r.clone(bak);
@@ -426,11 +468,11 @@ public class RSAServer extends Applet {
             if (newR.lesser(helper) && newRSgn && helperSgn) {
                 newRSgn = false;
                 helper.subtract(newR);
-                newR.clone(helper);
+                newR.copy(helper);
             } else if (newR.lesser(helper) && !newRSgn && !helperSgn) {
                 newRSgn = true;
                 helper.subtract(newR);
-                newR.clone(helper);
+                newR.copy(helper);
             } else if (newRSgn == helperSgn)
                 newR.subtract(helper);
             else
@@ -444,12 +486,12 @@ public class RSAServer extends Applet {
             ISOException.throwIt(ISO7816.SW_DATA_INVALID);
 
         if (!tSgn) {
-            bak.clone(n);
+            bak.copy(n);
             bak.subtract(t);
-            t.clone(bak);
+            t.copy(bak);
         }
 
-        res.clone(t);
+        res.copy(t);
     }
 
 }
