@@ -307,37 +307,37 @@ public class RSAServer extends Applet {
         // TODO test na nulovost!!!
 
         // TODO init elsewhere
+        Bignat n1 = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        Bignat n2 = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        Bignat s1 = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        Bignat s2 = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        Bignat tmp = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+
         rsa.init(clientPrivateKey, Cipher.MODE_DECRYPT);
         rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, tmpBignatSmall1.as_byte_array(), (short) 0);
+        clientPrivateKey.getModulus(n1.as_byte_array(), (short) 0);
 
-        Bignat lol = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        Bignat lol2 = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        Bignat lol3 = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        clientPrivateKey.getModulus(lol.as_byte_array(), (short) 0);
-
-        tmpBignatSmall2.mod_mult(clientSignature, tmpBignatSmall1, lol);
+        s1.mod_mult(clientSignature, tmpBignatSmall1, n1);
 
         rsa.init(clientPublicKey, Cipher.MODE_ENCRYPT);
-        rsa.doFinal(tmpBignatSmall2.as_byte_array(), (short) 0, (short) tmpBignatSmall2.as_byte_array().length, tmpBignatSmall1.as_byte_array(), (short) 0);
+        rsa.doFinal(s1.as_byte_array(), (short) 0, (short) s1.as_byte_array().length, tmpBignatSmall1.as_byte_array(), (short) 0);
 
-        tmpBignatSmall2.from_byte_array(tmpBuffer);
+        tmp.from_byte_array(tmpBuffer);
 
-        if (!tmpBignatSmall1.same_value(tmpBignatSmall2))
+        if (!tmpBignatSmall1.same_value(tmp))
             ISOException.throwIt(ISO7816.SW_DATA_INVALID);
 
         rsa.init(serverPrivateKey, Cipher.MODE_DECRYPT);
-        rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, lol3.as_byte_array(), (short) 0);
+        rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, s2.as_byte_array(), (short) 0);
 
-        clientPrivateKey.getModulus(tmpBignatSmall2.as_byte_array(), (short) 0);
-        serverPrivateKey.getModulus(lol.as_byte_array(), (short) 0);
+        serverPrivateKey.getModulus(n2.as_byte_array(), (short) 0);
 
-        inverse(tmpBignatSmall2, lol, lol2, bignatHelper);
+        inverse(n1, n2, tmp, bignatHelper);
 
-        lol3.subtract(tmpBignatSmall1);
-        tmpBignatBig.mod_mult(lol3, lol2, lol);
-        SGN.clone(lol3);
-        SGN.mult(tmpBignatBig, lol);
-        SGN.add(tmpBignatSmall1);
+        s2.mod_sub(s1, n2);
+        tmpBignatBig.mod_mult(s2, tmp, n2);
+        SGN.mult(tmpBignatBig, n1);
+        SGN.add(s1);
 
         /*
         // Compute the full signature
