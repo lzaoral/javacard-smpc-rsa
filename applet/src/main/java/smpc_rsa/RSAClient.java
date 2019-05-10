@@ -97,6 +97,7 @@ public class RSAClient extends Applet {
 
         rsaPair = new KeyPair(KeyPair.ALG_RSA, KeyBuilder.LENGTH_RSA_2048);
         privateKey = (RSAPrivateKey) rsaPair.getPrivate();
+
         publicKey = (RSAPublicKey) rsaPair.getPublic();
 
         register();
@@ -153,7 +154,7 @@ public class RSAClient extends Applet {
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void generateRSAKeys(APDU apdu) {
-        if (privateKey.isInitialized())
+        if (privateKey.isInitialized() || publicKey.isInitialized())
             ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
         byte[] apduBuffer = apdu.getBuffer();
@@ -185,6 +186,7 @@ public class RSAClient extends Applet {
         Common.checkZeroP1P2(apdu.getBuffer());
 
         privateKey.clearKey();
+        publicKey.clearKey();
 
         messageState = 0x00;
         nSent = false;

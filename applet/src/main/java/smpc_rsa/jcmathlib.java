@@ -2244,19 +2244,8 @@ public class jcmathlib {
             ech = new ECPoint_Helper(rm);
     
             // Set proper lengths and other internal settings based on required ECC length
-            if (maxECLength <= (short) 256) {
-                setECC256Config();
-            }
-            else if (maxECLength <= (short) 384) {
-                setECC384Config();
-            } 
-            else if (maxECLength <= (short) 512) {
-                setECC512Config();
-            }
-            else {
-                ISOException.throwIt(ReturnCodes.SW_ECPOINT_INVALIDLENGTH);
-            }
-            
+            setConfig();
+
             // Allocate shared resources and initialize mapping between shared objects and helpers
             rm.initialize(MAX_POINT_SIZE, MAX_COORD_SIZE, MAX_BIGNAT_SIZE, MULT_RSA_ENGINE_MAX_LENGTH_BITS, bnh);
             bnh.initialize(MODULO_RSA_ENGINE_MAX_LENGTH_BITS, MULT_RSA_ENGINE_MAX_LENGTH_BITS);
@@ -2274,33 +2263,8 @@ public class jcmathlib {
             ech.FLAG_FAST_EC_MULT_VIA_KA = false;   
         }
         
-        public void setECC256Config() {
+        public void setConfig() {
             reset();
-            //MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 512;
-            //MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 768;        
-            //MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 1024;  // MPC Sign needs bigger array
-            //MAX_POINT_SIZE = (short) 64;
-            computeDerivedLengths();
-        }
-        public void setECC384Config() {
-            reset();
-            MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 768;
-            MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 1024;
-            MAX_POINT_SIZE = (short) 96;
-            computeDerivedLengths();
-        }
-        public void setECC512Config() {
-            reset();
-            MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 1024;
-            MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 1280;
-            MAX_POINT_SIZE = (short) 128;
-            computeDerivedLengths();
-        }    
-        public void setECC521Config() {
-            reset();
-            MODULO_RSA_ENGINE_MAX_LENGTH_BITS = (short) 1280;
-            MULT_RSA_ENGINE_MAX_LENGTH_BITS = (short) 1280;
-            MAX_POINT_SIZE = (short) 129;
             computeDerivedLengths();
         }
         

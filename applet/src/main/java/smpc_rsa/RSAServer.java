@@ -21,9 +21,10 @@ public class RSAServer extends Applet {
     private static final byte INS_GENERATE_KEYS = 0x10;
     private static final byte INS_SET_CLIENT_KEYS = 0x12;
     private static final byte INS_GET_PUBLIC_N = 0x14;
-    private static final byte INS_SET_CLIENT_SIGNATURE = 0x16;
-    private static final byte INS_SIGNATURE = 0x18;
-    private static final byte INS_GET_SIGNATURE = 0x20;
+    private static final byte INS_RESET = 0x16;
+    private static final byte INS_SET_CLIENT_SIGNATURE = 0x18;
+    private static final byte INS_SIGNATURE = 0x20;
+    private static final byte INS_GET_SIGNATURE = 0x22;
 
     private static final byte P1_SET_N1 = 0x00;
     private static final byte P1_SET_D1_SERVER = 0x01;
@@ -46,7 +47,6 @@ public class RSAServer extends Applet {
     private final ECConfig jcMathCfg;
     private final Bignat_Helper bignatHelper;
 
-    private final KeyPair clientRsaPair;
     private final RSAPrivateKey clientPrivateKey;
     private final RSAPublicKey clientPublicKey;
 
@@ -54,7 +54,7 @@ public class RSAServer extends Applet {
     private final RSAPrivateKey serverPrivateKey;
     private final RSAPublicKey serverPublicKey;
 
-    private final Cipher rsa;
+    private final Cipher rsaClient, rsaClientVerify, rsaServer;
 
     private final byte[] keyState = new byte[2];
     private final byte[] sigState = new byte[2];
@@ -78,14 +78,13 @@ public class RSAServer extends Applet {
         serverRsaPair = new KeyPair(KeyPair.ALG_RSA, KeyBuilder.LENGTH_RSA_2048);
         serverPrivateKey = (RSAPrivateKey) serverRsaPair.getPrivate();
         serverPublicKey = (RSAPublicKey) serverRsaPair.getPublic();
-        serverPublicKey.setExponent(E, (short) 0, (short) E.length);
 
-        clientRsaPair = new KeyPair(KeyPair.ALG_RSA, KeyBuilder.LENGTH_RSA_2048);
-        clientPrivateKey = (RSAPrivateKey) clientRsaPair.getPrivate();
-        clientPublicKey = (RSAPublicKey) clientRsaPair.getPublic();
-        clientPublicKey.setExponent(E, (short) 0, (short) E.length);
+        clientPrivateKey = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, KeyBuilder.LENGTH_RSA_2048,false);
+        clientPublicKey = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_2048,false);
 
-        rsa = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
+        rsaClient = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
+        rsaClientVerify = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
+        rsaServer = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
 
         register();
     }
@@ -95,12 +94,6 @@ public class RSAServer extends Applet {
             return;
 
         byte[] apduBuffer = apdu.getBuffer();
-
-        /*
-        tmpBignatSmall1.from_byte_array(new byte[]{0x08, (byte) 0x9D, (byte) 0xAE});
-        tmpBignatSmall2.from_byte_array(new byte[]{(byte) 0x83, 0x78, 0x0A, 0x59, (byte) 0xC9});
-        inverse(tmpBignatSmall1, tmpBignatSmall2, tmpBignatBig, bignatHelper);
-        */
 
         if (apduBuffer[ISO7816.OFFSET_CLA] != CLA_RSA_SMPC_SERVER)
             ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
@@ -116,6 +109,10 @@ public class RSAServer extends Applet {
 
             case INS_GET_PUBLIC_N:
                 getPublicModulus(apdu);
+                break;
+
+            case INS_RESET:
+                reset(apdu);
                 break;
 
             case INS_SET_CLIENT_SIGNATURE:
@@ -167,7 +164,12 @@ public class RSAServer extends Applet {
         if (serverPrivateKey.isInitialized() || serverPublicKey.isInitialized())
             ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
+        serverPublicKey.setExponent(E, (short) 0, (short) E.length);
         serverRsaPair.genKeyPair();
+
+        clientPublicKey.setExponent(E, (short) 0, (short) E.length);
+
+        rsaServer.init(serverPrivateKey, Cipher.MODE_DECRYPT);
     }
 
     private void setClientKeys(APDU apdu) {
@@ -220,8 +222,29 @@ public class RSAServer extends Applet {
         }
 
         if (clientPrivateKey.isInitialized())
-            rsa.init(clientPrivateKey, Cipher.MODE_DECRYPT);
+            rsaClient.init(clientPrivateKey, Cipher.MODE_DECRYPT);
 
+        if (clientPublicKey.isInitialized())
+            rsaClientVerify.init(clientPublicKey, Cipher.MODE_ENCRYPT);
+
+        Common.clearByteArray(tmpBuffer);
+    }
+
+    // TODO:
+    private void reset(APDU apdu) {
+        Common.checkZeroP1P2(apdu.getBuffer());
+
+        clientPrivateKey.clearKey();
+        clientPublicKey.clearKey();
+
+        serverPrivateKey.clearKey();
+        serverPublicKey.clearKey();
+
+        /*messageState = 0x00;
+        nSent = false;
+        d1ServerSent = false;
+
+        Common.clearByteArray(d1ServerBuffer);*/
         Common.clearByteArray(tmpBuffer);
     }
 
@@ -313,22 +336,21 @@ public class RSAServer extends Applet {
         Bignat s2 = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
         Bignat tmp = new Bignat(ARR_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
 
-        rsa.init(clientPrivateKey, Cipher.MODE_DECRYPT);
-        rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, tmpBignatSmall1.as_byte_array(), (short) 0);
+
+        rsaClient.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, tmpBignatSmall1.as_byte_array(), (short) 0);
         clientPrivateKey.getModulus(n1.as_byte_array(), (short) 0);
 
         s1.mod_mult(clientSignature, tmpBignatSmall1, n1);
 
-        rsa.init(clientPublicKey, Cipher.MODE_ENCRYPT);
-        rsa.doFinal(s1.as_byte_array(), (short) 0, (short) s1.as_byte_array().length, tmpBignatSmall1.as_byte_array(), (short) 0);
+        rsaClientVerify.doFinal(s1.as_byte_array(), (short) 0, (short) s1.as_byte_array().length, tmpBignatSmall1.as_byte_array(), (short) 0);
 
         tmp.from_byte_array(tmpBuffer);
 
         if (!tmpBignatSmall1.same_value(tmp))
             ISOException.throwIt(ISO7816.SW_DATA_INVALID);
 
-        rsa.init(serverPrivateKey, Cipher.MODE_DECRYPT);
-        rsa.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, s2.as_byte_array(), (short) 0);
+
+        rsaServer.doFinal(tmpBuffer, (short) 0, (short) tmpBuffer.length, s2.as_byte_array(), (short) 0);
 
         serverPrivateKey.getModulus(n2.as_byte_array(), (short) 0);
 
