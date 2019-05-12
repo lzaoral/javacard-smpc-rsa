@@ -26,7 +26,7 @@ import javacardx.crypto.Cipher;
  * @author Lukas Zaoral
  */
 public class RSAClient extends Applet {
-    private static final byte CLA_RSA_SMPC_CLIENT = 0x01;
+    private static final byte CLA_RSA_SMPC_CLIENT = (byte) 0x81;
 
     /**
      * Instruction codes
@@ -34,8 +34,8 @@ public class RSAClient extends Applet {
     private static final byte INS_GENERATE_KEYS = 0x10;
     private static final byte INS_GET_KEYS = 0x12;
     private static final byte INS_SET_MESSAGE = 0x14;
-    private static final byte INS_RESET = 0x16;
-    private static final byte INS_SIGNATURE = 0x18;
+    private static final byte INS_SIGNATURE = 0x16;
+    private static final byte INS_RESET = 0x18;
 
     /**
      * P1 parameters of the INS_GET_KEYS instruction
