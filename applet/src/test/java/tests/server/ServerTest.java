@@ -2,6 +2,7 @@ package tests.server;
 
 import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import javax.smartcardio.CommandAPDU;
@@ -17,7 +18,7 @@ import static tests.server.ServerAPDU.*;
  */
 public class ServerTest {
 
-    private static boolean realCard = true;
+    private static boolean realCard = false;
     private static int SW_OK = 0x9000;
     private ServerAPDU server;
 
@@ -26,14 +27,17 @@ public class ServerTest {
         server = new ServerAPDU(realCard);
     }
 
+    @BeforeMethod
     public void setUp() throws Exception {
         server.transmit(new CommandAPDU(CLA_RSA_SMPC_SERVER, INS_RESET, 0x00, 0x00));
         server.setDebug(true);
     }
 
+    // TODO: testy
+
     @Test
     public void simpleSign() throws Exception {
-        for (int i = 0; i < 200; ++i) {
+        for (int i = 0; i < 0; ++i) {
             setUp();
 
             System.out.println(server.generateKeys().getSW());

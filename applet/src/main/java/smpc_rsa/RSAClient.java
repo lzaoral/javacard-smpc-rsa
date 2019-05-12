@@ -15,6 +15,8 @@ import javacard.security.RandomData;
 
 import javacardx.crypto.Cipher;
 
+// TODO: cryptoexception
+
 /**
  * The {@link RSAClient} class represents JavaCard Applet
  * used solely for the purpose of signing. RSA keys must be
@@ -147,11 +149,12 @@ public class RSAClient extends Applet {
     }
 
     /**
-     * Generates the client and server shares of client key and the client modulus.
-     * If the keys have already been generated, does nothing. To regenerate them,
+     * Generates the client and server shares of client key and the client partial modulus.
+     * If the keys have already been generated, throws an exception. To regenerate them,
      * use the INS_RESET command first and then try again.
      *
      * @param apdu object representing the communication between the card and the world
+     * @throws ISOException SW_COMMAND_NOT_ALLOWED if the keys have already been generated
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void generateRSAKeys(APDU apdu) {
@@ -183,33 +186,12 @@ public class RSAClient extends Applet {
     }
 
     /**
-     * Zeroes out all arrays and resets the applet to the initial state.
-     *
-     * @param apdu object representing the communication between the card and the world
-     * @throws ISOException SW_INCORRECT_P1P2
-     */
-    private void reset(APDU apdu) {
-        Common.checkZeroP1P2(apdu.getBuffer());
-
-        privateKey.clearKey();
-        publicKey.clearKey();
-
-        messageState = 0x00;
-
-        Common.clearByteArray(keysSent);
-        Common.clearByteArray(d1ServerBuffer);
-        Common.clearByteArray(tmpBuffer);
-    }
-
-    /**
-     * Sends a client modulus or server share of the client private exponent
-     * depending on the P1 argument. The keys must generated first and can
-     * be retrieved only once.
+     * Sends a client modulus or server share of the client private exponent depending
+     * on the P1 argument. The keys must generated first and can be retrieved only once.
      *
      * @param apdu object representing the communication between the card and the world
      * @throws ISOException SW_CONDITIONS_NOT_SATISFIED the keys have not been initialised
      * @throws ISOException SW_COMMAND_NOT_ALLOWED if the given key part has already been retrieved
-     * @throws ISOException SW_WRONG_LENGTH if the retrieved modulus has got wrong bit length
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void getRSAKeys(APDU apdu) {
@@ -246,8 +228,7 @@ public class RSAClient extends Applet {
     }
 
     /**
-     * Loads the message to the card memory by parts specified
-     * in the P2 argument.
+     * Loads the message to the card memory by parts specified in the P2 argument.
      *
      * Upon calling, the keys must be generated and the server share if the client exponent
      * and client modulus must be already retrieved.
@@ -256,10 +237,29 @@ public class RSAClient extends Applet {
      * @throws ISOException SW_CONDITIONS_NOT_SATISFIED if the keys have not been retrieved or generated
      */
     private void setMessage(APDU apdu) {
-        if (keysSent[P1_GET_D1_SERVER] == Common.DATA_TRANSFERRED || keysSent[P1_GET_N1] == Common.DATA_TRANSFERRED)
+        if (keysSent[P1_GET_D1_SERVER] != Common.DATA_TRANSFERRED || keysSent[P1_GET_N1] != Common.DATA_TRANSFERRED)
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         messageState = Common.setMessage(apdu, tmpBuffer, messageState, privateKey);
+    }
+
+    /**
+     * Zeroes out all arrays and resets the applet to the initial state.
+     *
+     * @param apdu object representing the communication between the card and the world
+     * @throws ISOException SW_INCORRECT_P1P2
+     */
+    private void reset(APDU apdu) {
+        Common.checkZeroP1P2(apdu.getBuffer());
+
+        privateKey.clearKey();
+        publicKey.clearKey();
+
+        messageState = 0x00;
+
+        Common.clearByteArray(keysSent);
+        Common.clearByteArray(d1ServerBuffer);
+        Common.clearByteArray(tmpBuffer);
     }
 
 }

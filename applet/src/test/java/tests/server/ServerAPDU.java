@@ -28,15 +28,15 @@ import java.util.Arrays;
  * @author Petr Svenda, Dusan Klinec (ph4r05)
  */
 public class ServerAPDU {
-    public static final byte CLA_RSA_SMPC_SERVER = 0x03;
+    public static final byte CLA_RSA_SMPC_SERVER = (byte) 0x83;
 
     public static final byte INS_GENERATE_KEYS = 0x10;
     public static final byte INS_SET_CLIENT_KEYS = 0x12;
     public static final byte INS_GET_PUBLIC_N = 0x14;
-    public static final byte INS_RESET = 0x16;
-    public static final byte INS_SET_CLIENT_SIGNATURE = 0x18;
-    public static final byte INS_SIGNATURE = 0x20;
-    public static final byte INS_GET_SIGNATURE = 0x22;
+    public static final byte INS_SET_CLIENT_SIGNATURE = 0x16;
+    public static final byte INS_SIGNATURE = 0x18;
+    public static final byte INS_GET_SIGNATURE = 0x20;
+    public static final byte INS_RESET = 0x22;
 
     public static final byte P1_SET_N1 = 0x00;
     public static final byte P1_SET_D1_SERVER = 0x01;

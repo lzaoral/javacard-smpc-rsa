@@ -18,15 +18,15 @@ import smpc_rsa.jcmathlib.ECConfig;
 // TODO: Common constants to separate Class
 
 public class RSAServer extends Applet {
-    private static final byte CLA_RSA_SMPC_SERVER = 0x03;
+    private static final byte CLA_RSA_SMPC_SERVER = (byte) 0x83;
 
     private static final byte INS_GENERATE_KEYS = 0x10;
     private static final byte INS_SET_CLIENT_KEYS = 0x12;
     private static final byte INS_GET_PUBLIC_N = 0x14;
-    private static final byte INS_RESET = 0x16;
-    private static final byte INS_SET_CLIENT_SIGNATURE = 0x18;
-    private static final byte INS_SIGNATURE = 0x20;
-    private static final byte INS_GET_SIGNATURE = 0x22;
+    private static final byte INS_SET_CLIENT_SIGNATURE = 0x16;
+    private static final byte INS_SIGNATURE = 0x18;
+    private static final byte INS_GET_SIGNATURE = 0x20;
+    private static final byte INS_RESET = 0x22;
 
     private static final byte P1_SET_N1 = 0x00;
     private static final byte P1_SET_D1_SERVER = 0x01;

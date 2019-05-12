@@ -12,6 +12,8 @@ import javacard.security.RSAPrivateKey;
 
 import javacardx.crypto.Cipher;
 
+// TODO: cryptoexception
+
 /**
  * The {@link RSAClientSign} class represents JavaCard Applet used solely for
  * the purpose of client signing. The RSA keys must be provided by the user prior

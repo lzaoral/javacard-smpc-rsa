@@ -22,7 +22,7 @@ import static tests.client_sign.ClientSignAPDU.*;
 public class ClientSignTest {
 
     private static int SW_OK = 0x9000;
-    private static boolean realCard = true;
+    private static boolean realCard = false;
     private ClientSignAPDU client;
 
     @BeforeClass
@@ -130,7 +130,7 @@ public class ClientSignTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(ISO7816.SW_WRONG_LENGTH, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -151,6 +151,26 @@ public class ClientSignTest {
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+    }
+
+    @Test
+    public void setWrongMultiN() throws Exception {
+        setSingleD();
+        ResponseAPDU res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+
+        res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(ISO7816.SW_WRONG_LENGTH, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -373,7 +393,15 @@ public class ClientSignTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_PART_0, new byte[]{(byte) 0xFF}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+
+        res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
