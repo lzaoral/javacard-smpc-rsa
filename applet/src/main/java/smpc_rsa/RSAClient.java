@@ -5,8 +5,8 @@ import javacard.framework.Applet;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
-import javacard.framework.Util;
 
+import javacard.security.CryptoException;
 import javacard.security.KeyBuilder;
 import javacard.security.KeyPair;
 import javacard.security.RSAPrivateKey;
@@ -20,8 +20,8 @@ import javacardx.crypto.Cipher;
  * used solely for the purpose of signing. RSA keys must be
  * provided by the user prior to other use.
  *
- * It is recommended to use the provided jar with CardManager
- * to send commands to given card (or emulator).
+ * It is recommended to use the provided proxy application
+ * to send commands to the given card.
  *
  * @author Lukas Zaoral
  */
@@ -37,17 +37,16 @@ public class RSAClient extends Applet {
     private static final byte INS_SIGNATURE = 0x16;
     private static final byte INS_RESET = 0x18;
 
+
     /**
      * P1 parameters of the INS_GET_KEYS instruction
      */
-    private static final byte P1_GET_N = 0x00;
-    private static final byte P1_GET_D1_SERVER = 0x01;
+    private static final byte P1_GET_D1_SERVER = 0x00;
+    private static final byte P1_GET_N1 = 0x01;
 
     /**
-     * Helper constants
+     * Helper arrays
      */
-    private static final short ARR_LEN = 256;
-
     private final byte[] E = new byte[]{0x01, 0x00, 0x01};
     private final byte[] tmpBuffer;
     private final byte[] d1ServerBuffer;
@@ -55,18 +54,17 @@ public class RSAClient extends Applet {
     /**
      * Variables holding the state of sent keys and set messages
      */
-    private static boolean nSent = false;
-    private static boolean d1ServerSent = false;
+    private final byte[] keysSent = new byte[2];
     private byte messageState = 0x00;
 
     /**
      * RSA objects
      */
-    private final RandomData rng;
-    private final Cipher rsa;
-    private final KeyPair rsaPair;
-    private final RSAPrivateKey privateKey;
-    private final RSAPublicKey publicKey;
+    private RandomData rng;
+    private KeyPair rsaPair;
+    private RSAPrivateKey privateKey;
+    private Cipher rsa;
+    private RSAPublicKey publicKey;
 
     /**
      * Creates the instance of this Applet. Used by the JavaCard runtime itself.
@@ -89,16 +87,19 @@ public class RSAClient extends Applet {
      * @param bLength bLength
      */
     public RSAClient(byte[] bArray, short bOffset, byte bLength) {
-        tmpBuffer = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
-        d1ServerBuffer = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
+        tmpBuffer = JCSystem.makeTransientByteArray(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.CLEAR_ON_RESET);
+        d1ServerBuffer = JCSystem.makeTransientByteArray(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.CLEAR_ON_RESET);
 
-        rng = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
-        rsa = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
+        try {
+            rng = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
+            rsa = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
 
-        rsaPair = new KeyPair(KeyPair.ALG_RSA, KeyBuilder.LENGTH_RSA_2048);
-        privateKey = (RSAPrivateKey) rsaPair.getPrivate();
-
-        publicKey = (RSAPublicKey) rsaPair.getPublic();
+            rsaPair = new KeyPair(KeyPair.ALG_RSA, KeyBuilder.LENGTH_RSA_2048);
+            privateKey = (RSAPrivateKey) rsaPair.getPrivate();
+            publicKey = (RSAPublicKey) rsaPair.getPublic();
+        } catch (CryptoException e) {
+            ISOException.throwIt(e.getReason());
+        }
 
         register();
     }
@@ -160,18 +161,23 @@ public class RSAClient extends Applet {
         byte[] apduBuffer = apdu.getBuffer();
         Common.checkZeroP1P2(apduBuffer);
 
-        publicKey.setExponent(E, (short) 0, (short) E.length);
+        try {
+            publicKey.setExponent(E, (short) 0, (short) E.length);
 
-        rsaPair.genKeyPair();
-        privateKey.getExponent(d1ServerBuffer, (short) 0);
+            rsaPair.genKeyPair();
+            privateKey.getExponent(d1ServerBuffer, (short) 0);
 
-        // d1Client is one byte shorter to be smaller than phi(n)
-        // and computing phi(n) !!on a smart card!! is a madness
-        rng.generateData(tmpBuffer, (short) 1, (short) (tmpBuffer.length - 1));
-        Common.subtract(d1ServerBuffer, tmpBuffer);
+            // d1Client is one byte shorter to be smaller than phi(n)
+            // computing phi(n) !!on a smart card!! is a madness
+            // very rarely creates non-valid private key shares
+            rng.generateData(tmpBuffer, (short) 1, (short) (tmpBuffer.length - 1));
+            Common.subtract(d1ServerBuffer, tmpBuffer);
 
-        privateKey.setExponent(tmpBuffer, (short) 1, (short) (tmpBuffer.length - 1));
-        rsa.init(privateKey, Cipher.MODE_DECRYPT);
+            privateKey.setExponent(tmpBuffer, (short) 1, (short) (tmpBuffer.length - 1));
+            rsa.init(privateKey, Cipher.MODE_DECRYPT);
+        } catch (CryptoException e) {
+            ISOException.throwIt(e.getReason());
+        }
 
         Common.clearByteArray(tmpBuffer);
     }
@@ -189,9 +195,8 @@ public class RSAClient extends Applet {
         publicKey.clearKey();
 
         messageState = 0x00;
-        nSent = false;
-        d1ServerSent = false;
 
+        Common.clearByteArray(keysSent);
         Common.clearByteArray(d1ServerBuffer);
         Common.clearByteArray(tmpBuffer);
     }
@@ -202,12 +207,9 @@ public class RSAClient extends Applet {
      * be retrieved only once.
      *
      * @param apdu object representing the communication between the card and the world
-     * @throws ISOException SW_CONDITIONS_NOT_SATISFIED the keys have not been
-     *     initialised
-     * @throws ISOException SW_COMMAND_NOT_ALLOWED if the given key part has already
-     *     been retrieved
-     * @throws ISOException SW_WRONG_LENGTH if the retrieved modulus has got wrong
-     *     bit length
+     * @throws ISOException SW_CONDITIONS_NOT_SATISFIED the keys have not been initialised
+     * @throws ISOException SW_COMMAND_NOT_ALLOWED if the given key part has already been retrieved
+     * @throws ISOException SW_WRONG_LENGTH if the retrieved modulus has got wrong bit length
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void getRSAKeys(APDU apdu) {
@@ -219,24 +221,23 @@ public class RSAClient extends Applet {
         if (apduBuffer[ISO7816.OFFSET_P2] != 0x00)
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        switch (apduBuffer[ISO7816.OFFSET_P1]) {
-            case P1_GET_N:
-                if (nSent)
+        byte p1 = apduBuffer[ISO7816.OFFSET_P1];
+
+        switch (p1) {
+            case P1_GET_N1:
+                if (keysSent[p1] == Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-                if (privateKey.getModulus(tmpBuffer, (short) 0) != ARR_LEN)
-                    ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
-
                 Common.sendNum(apdu, tmpBuffer, (short) 0, true);
-                nSent = true;
+                keysSent[p1] = Common.DATA_TRANSFERRED;
                 break;
 
             case P1_GET_D1_SERVER:
-                if (d1ServerSent)
+                if (keysSent[p1] == Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
                 Common.sendNum(apdu, d1ServerBuffer, (short) 0, true);
-                d1ServerSent = true;
+                keysSent[p1] = Common.DATA_TRANSFERRED;
                 break;
 
             default:
@@ -252,11 +253,10 @@ public class RSAClient extends Applet {
      * and client modulus must be already retrieved.
      *
      * @param apdu object representing the communication between the card and the world
-     * @throws ISOException SW_CONDITIONS_NOT_SATISFIED if the keys have not been retrieved
-     *     or generated
+     * @throws ISOException SW_CONDITIONS_NOT_SATISFIED if the keys have not been retrieved or generated
      */
     private void setMessage(APDU apdu) {
-        if (!d1ServerSent || !nSent)
+        if (keysSent[P1_GET_D1_SERVER] == Common.DATA_TRANSFERRED || keysSent[P1_GET_N1] == Common.DATA_TRANSFERRED)
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         messageState = Common.setMessage(apdu, tmpBuffer, messageState, privateKey);

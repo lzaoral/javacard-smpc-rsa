@@ -13,12 +13,12 @@ import javacard.security.RSAPrivateKey;
 import javacardx.crypto.Cipher;
 
 /**
- * The {@link RSAClientSign} class represents JavaCard Applet
- * used solely for the purpose of signing. RSA keys must be
- * provided by the user prior to other use.
+ * The {@link RSAClientSign} class represents JavaCard Applet used solely for
+ * the purpose of client signing. The RSA keys must be provided by the user prior
+ * to other use.
  *
- * It is recommended to use the provided jar with CardManager
- * to send commands to given card (or emulator).
+ * It is recommended to use the provided proxy application to send commands
+ * to the given card.
  *
  * @author Lukas Zaoral
  */
@@ -38,17 +38,16 @@ public class RSAClientSign extends Applet {
      * P1 parameters of the INS_SET_KEYS instruction
      */
     private static final byte P1_SET_D1_CLIENT = 0x00;
-    private static final byte P1_SET_N = 0x01;
+    private static final byte P1_SET_N1 = 0x01;
 
     /**
-     * Helper constants
+     * Helper arrays
      */
-    private static final short PARTIAL_MODULUS_LENGTH = 256;
+    private final byte[] tmpBuffer;
 
     /**
      * Variables holding the set keys and messages
      */
-    private final byte[] tmpBuffer;
     private final byte[] keyState = new byte[2];
     private byte messageState = 0x00;
 
@@ -79,7 +78,7 @@ public class RSAClientSign extends Applet {
      * @param bLength bLength
      */
     public RSAClientSign(byte[] bArray, short bOffset, byte bLength) {
-        tmpBuffer = JCSystem.makeTransientByteArray(PARTIAL_MODULUS_LENGTH, JCSystem.CLEAR_ON_RESET);
+        tmpBuffer = JCSystem.makeTransientByteArray(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.CLEAR_ON_RESET);
 
         try {
             privateKey = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE,
@@ -155,18 +154,18 @@ public class RSAClientSign extends Applet {
         byte[] apduBuffer = apdu.getBuffer();
         switch (apduBuffer[ISO7816.OFFSET_P1]) {
             case P1_SET_D1_CLIENT:
-                if (keyState[P1_SET_D1_CLIENT] == Common.DATA_LOADED)
+                if (keyState[P1_SET_D1_CLIENT] == Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
                 Common.setNumber(apdu, tmpBuffer);
                 updateKey(apdu);
                 break;
 
-            case P1_SET_N:
-                if (keyState[P1_SET_D1_CLIENT] != Common.DATA_LOADED)
+            case P1_SET_N1:
+                if (keyState[P1_SET_D1_CLIENT] != Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-                if (keyState[P1_SET_N] == Common.DATA_LOADED)
+                if (keyState[P1_SET_N1] == Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
                 Common.setNumber(apdu, tmpBuffer);
@@ -185,6 +184,7 @@ public class RSAClientSign extends Applet {
      *
      * @param apdu object representing the communication between the card and the world
      * @throws ISOException SW_COMMAND_NOT_ALLOWED if the given key part is set more than once
+     * @throws ISOException SW_WRONG_LENGTH if the partial modulus n1 is shorter
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void updateKey(APDU apdu) {
@@ -192,18 +192,22 @@ public class RSAClientSign extends Applet {
         byte p1 = apduBuffer[ISO7816.OFFSET_P1];
         byte p2 = apduBuffer[ISO7816.OFFSET_P2];
 
-        if (p1 != P1_SET_D1_CLIENT && p1 != P1_SET_N)
+        if (p1 != P1_SET_D1_CLIENT && p1 != P1_SET_N1)
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
         keyState[p1] = Common.updateLoadState(keyState[p1], p2);
-        if (keyState[p1] != Common.DATA_LOADED)
+        if (keyState[p1] != Common.DATA_TRANSFERRED)
             return;
 
         try {
             if (p1 == P1_SET_D1_CLIENT)
                 privateKey.setExponent(tmpBuffer, (short) 0, (short) tmpBuffer.length);
-            else
+            else {
+                if ((tmpBuffer[0] & Common.HIGHEST_BIT_MASK) != Common.HIGHEST_BIT_MASK)
+                    ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+
                 privateKey.setModulus(tmpBuffer, (short) 0, (short) tmpBuffer.length);
+            }
 
             if (privateKey.isInitialized())
                 rsa.init(privateKey, Cipher.MODE_DECRYPT);

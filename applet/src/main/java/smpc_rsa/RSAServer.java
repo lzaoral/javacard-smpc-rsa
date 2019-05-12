@@ -6,8 +6,10 @@ import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 
-import javacard.security.*;
-
+import javacard.security.KeyBuilder;
+import javacard.security.KeyPair;
+import javacard.security.RSAPrivateKey;
+import javacard.security.RSAPublicKey;
 import javacardx.crypto.Cipher;
 import smpc_rsa.jcmathlib.Bignat;
 import smpc_rsa.jcmathlib.Bignat_Helper;
@@ -187,7 +189,7 @@ public class RSAServer extends Applet {
         byte[] apduBuffer = apdu.getBuffer();
         switch (apduBuffer[ISO7816.OFFSET_P1]) {
             case P1_SET_D1_SERVER:
-                if (keyState[P1_SET_D1_SERVER] == Common.DATA_LOADED)
+                if (keyState[P1_SET_D1_SERVER] == Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
                 Common.setNumber(apdu, tmpBuffer);
@@ -195,10 +197,10 @@ public class RSAServer extends Applet {
                 break;
 
             case P1_SET_N1:
-                if (keyState[P1_SET_D1_SERVER] != Common.DATA_LOADED)
+                if (keyState[P1_SET_D1_SERVER] != Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-                if (keyState[P1_SET_N1] == Common.DATA_LOADED)
+                if (keyState[P1_SET_N1] == Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
                 Common.setNumber(apdu, tmpBuffer);
@@ -219,7 +221,7 @@ public class RSAServer extends Applet {
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
         keyState[p1] = Common.updateLoadState(keyState[p1], p2);
-        if (keyState[p1] != Common.DATA_LOADED)
+        if (keyState[p1] != Common.DATA_TRANSFERRED)
             return;
 
         if (p1 == P1_SET_D1_SERVER)
@@ -266,17 +268,17 @@ public class RSAServer extends Applet {
         byte p1 = apduBuffer[ISO7816.OFFSET_P1];
         switch (p1) {
             case P1_SET_MESSAGE:
-                if (sigState[P1_SET_MESSAGE] == Common.DATA_LOADED)
+                if (sigState[P1_SET_MESSAGE] == Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
                 Common.setNumber(apdu, tmpBuffer);
                 break;
 
             case P1_SET_SIGNATURE:
-                if (sigState[P1_SET_MESSAGE] != Common.DATA_LOADED)
+                if (sigState[P1_SET_MESSAGE] != Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-                if (sigState[P1_SET_SIGNATURE] == Common.DATA_LOADED)
+                if (sigState[P1_SET_SIGNATURE] == Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
                 Common.setNumber(apdu, clientSignature.as_byte_array());
