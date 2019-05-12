@@ -6,6 +6,7 @@ import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 
+import javacard.security.CryptoException;
 import javacard.security.KeyBuilder;
 import javacard.security.RSAPrivateKey;
 
@@ -23,15 +24,15 @@ import javacardx.crypto.Cipher;
  */
 public class RSAClientSign extends Applet {
 
-    private static final byte CLA_RSA_CLIENT_SIGN = 0x00;
+    private static final byte CLA_RSA_CLIENT_SIGN = (byte) 0x80;
 
     /**
      * Instruction codes
      */
     private static final byte INS_SET_KEYS = 0x10;
     private static final byte INS_SET_MESSAGE = 0x12;
-    private static final byte INS_RESET = 0x14;
-    private static final byte INS_SIGNATURE = 0x16;
+    private static final byte INS_SIGNATURE = 0x14;
+    private static final byte INS_RESET = 0x16;
 
     /**
      * P1 parameters of the INS_SET_KEYS instruction
@@ -42,21 +43,20 @@ public class RSAClientSign extends Applet {
     /**
      * Helper constants
      */
-    private static final short ARR_LEN = 256;
-
-    private final byte[] tmpBuffer;
+    private static final short PARTIAL_MODULUS_LENGTH = 256;
 
     /**
-     * Variables holding the state of set keys and messages
+     * Variables holding the set keys and messages
      */
+    private final byte[] tmpBuffer;
     private final byte[] keyState = new byte[2];
     private byte messageState = 0x00;
 
     /**
      * RSA objects
      */
-    private final Cipher rsa;
-    private final RSAPrivateKey privateKey;
+    private Cipher rsa;
+    private RSAPrivateKey privateKey;
 
     /**
      * Creates the instance of this Applet. Used by the JavaCard runtime itself.
@@ -79,10 +79,15 @@ public class RSAClientSign extends Applet {
      * @param bLength bLength
      */
     public RSAClientSign(byte[] bArray, short bOffset, byte bLength) {
-        tmpBuffer = JCSystem.makeTransientByteArray(ARR_LEN, JCSystem.CLEAR_ON_RESET);
-        privateKey = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE,
+        tmpBuffer = JCSystem.makeTransientByteArray(PARTIAL_MODULUS_LENGTH, JCSystem.CLEAR_ON_RESET);
+
+        try {
+            privateKey = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE,
                     KeyBuilder.LENGTH_RSA_2048, false);
-        rsa = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
+            rsa = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
+        } catch (CryptoException e) {
+            ISOException.throwIt(e.getReason());
+        }
 
         register();
     }
@@ -194,13 +199,17 @@ public class RSAClientSign extends Applet {
         if (keyState[p1] != Common.DATA_LOADED)
             return;
 
-        if (p1 == P1_SET_D1_CLIENT)
-            privateKey.setExponent(tmpBuffer, (short) 0, (short) tmpBuffer.length);
-        else
-            privateKey.setModulus(tmpBuffer, (short) 0, (short) tmpBuffer.length);
+        try {
+            if (p1 == P1_SET_D1_CLIENT)
+                privateKey.setExponent(tmpBuffer, (short) 0, (short) tmpBuffer.length);
+            else
+                privateKey.setModulus(tmpBuffer, (short) 0, (short) tmpBuffer.length);
 
-        if (privateKey.isInitialized())
-            rsa.init(privateKey, Cipher.MODE_DECRYPT);
+            if (privateKey.isInitialized())
+                rsa.init(privateKey, Cipher.MODE_DECRYPT);
+        } catch (CryptoException e) {
+            ISOException.throwIt(e.getReason());
+        }
 
         Common.clearByteArray(tmpBuffer);
     }

@@ -4,6 +4,7 @@ import javacard.framework.APDU;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.Util;
+import javacard.security.CryptoException;
 import javacard.security.RSAPrivateKey;
 
 import javacardx.crypto.Cipher;
@@ -38,7 +39,7 @@ public class Common {
      *    - first nibble decides whether the data has been divided, e.g.
      *         - 0x00 - no
      *         - 0x1X - yes
-     *    - second nibble is the segment number, e.g.
+     *    - second nibble is the segment order number, e.g.
      *         - 0x10 - first part of divided data.
      *         - 0x11 - second part of divided data
      *
@@ -54,7 +55,8 @@ public class Common {
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
         short lc = (short) (apduBuffer[ISO7816.OFFSET_LC] & MAX_COMMAND_APDU_LENGTH);
-        // get part number (p2 & 0x0F)
+
+        // get segment order number (p2 & 0x0F)
         short position = (short) (target.length - ((p2 & 0x0F) * MAX_COMMAND_APDU_LENGTH + lc));
         Util.arrayCopyNonAtomic(apduBuffer, ISO7816.OFFSET_CDATA, target, position, lc);
     }
@@ -111,9 +113,13 @@ public class Common {
         byte[] apduBuffer = apdu.getBuffer();
         checkZeroP1P2(apduBuffer);
 
-        rsa.doFinal(message, (short) 0, (short) message.length, apduBuffer, (short) 0);
-        clearByteArray(message);
+        try {
+            rsa.doFinal(message, (short) 0, (short) message.length, apduBuffer, (short) 0);
+        } catch (CryptoException e) {
+            ISOException.throwIt(e.getReason());
+        }
 
+        clearByteArray(message);
         apdu.setOutgoingAndSend((short) 0, (short) message.length);
     }
 

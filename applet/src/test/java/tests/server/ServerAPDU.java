@@ -28,21 +28,21 @@ import java.util.Arrays;
  * @author Petr Svenda, Dusan Klinec (ph4r05)
  */
 public class ServerAPDU {
-    private static final byte CLA_RSA_SMPC_SERVER = 0x03;
+    public static final byte CLA_RSA_SMPC_SERVER = 0x03;
 
-    private static final byte INS_GENERATE_KEYS = 0x10;
-    private static final byte INS_SET_CLIENT_KEYS = 0x12;
-    private static final byte INS_GET_PUBLIC_N = 0x14;
-    private static final byte INS_RESET = 0x16;
-    private static final byte INS_SET_CLIENT_SIGNATURE = 0x18;
-    private static final byte INS_SIGNATURE = 0x20;
-    private static final byte INS_GET_SIGNATURE = 0x22;
+    public static final byte INS_GENERATE_KEYS = 0x10;
+    public static final byte INS_SET_CLIENT_KEYS = 0x12;
+    public static final byte INS_GET_PUBLIC_N = 0x14;
+    public static final byte INS_RESET = 0x16;
+    public static final byte INS_SET_CLIENT_SIGNATURE = 0x18;
+    public static final byte INS_SIGNATURE = 0x20;
+    public static final byte INS_GET_SIGNATURE = 0x22;
 
-    private static final byte P1_SET_N1 = 0x00;
-    private static final byte P1_SET_D1_SERVER = 0x01;
+    public static final byte P1_SET_N1 = 0x00;
+    public static final byte P1_SET_D1_SERVER = 0x01;
 
-    private static final byte P1_SET_MESSAGE = 0x00;
-    private static final byte P1_SET_SIGNATURE = 0x01;
+    public static final byte P1_SET_MESSAGE = 0x00;
+    public static final byte P1_SET_SIGNATURE = 0x01;
 
     public static final byte P2_PART_0 = 0x00;
     public static final byte P2_PART_1 = 0x01;
@@ -52,7 +52,7 @@ public class ServerAPDU {
     public static final byte NONE = 0x00;
 
     public static final short CLIENT_ARR_LENGTH = 256;
-    private static final short MAX_APDU_LENGTH = 0xFF;
+    public static final short MAX_APDU_LENGTH = 0xFF;
 
     public static final String TEST_PATH = "src/test/java/tests/server/";
     public static final String CLIENT_KEY_SERVER_SHARE_FILE = TEST_PATH + "for_server.key";
@@ -252,4 +252,7 @@ public class ServerAPDU {
         return res;
     }
 
+    public void setDebug(boolean b) {
+        cardMgr.setbDebug(b);
+    }
 }

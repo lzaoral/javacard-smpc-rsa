@@ -37,7 +37,7 @@ public class RSAServer extends Applet {
     private static boolean generatedKeys = false;
     private static final short ARR_SIZE = 256;
 
-    private static final byte[] E = new byte[]{0x01, 0x00, 0x01};
+    private final byte[] E = new byte[]{0x01, 0x00, 0x01};
 
     private final Bignat tmpBignatSmall1, tmpBignatSmall2, tmpBignatBig, clientSignature;
 
@@ -158,6 +158,10 @@ public class RSAServer extends Applet {
     }
 
 
+    /**
+     *
+     * @param apdu
+     */
     private void generateRSAKeys(APDU apdu) {
         Common.checkZeroP1P2(apdu.getBuffer());
 
@@ -172,6 +176,10 @@ public class RSAServer extends Applet {
         rsaServer.init(serverPrivateKey, Cipher.MODE_DECRYPT);
     }
 
+    /**
+     *
+     * @param apdu
+     */
     private void setClientKeys(APDU apdu) {
         if (!serverPrivateKey.isInitialized() || clientPrivateKey.isInitialized())
                 ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);

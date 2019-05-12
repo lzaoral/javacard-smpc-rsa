@@ -31,12 +31,12 @@ import java.util.Arrays;
  * @author Petr Svenda, Dusan Klinec (ph4r05), Lukas Zaoral
  */
 public class ClientSignAPDU {
-    public static final byte CLA_RSA_SMPC_CLIENT_SIGN = 0x00;
+    public static final byte CLA_RSA_SMPC_CLIENT_SIGN = (byte) 0x80;
 
     public static final byte INS_SET_KEYS = 0x10;
     public static final byte INS_SET_MESSAGE = 0x12;
-    public static final byte INS_RESET = 0x14;
-    public static final byte INS_SIGNATURE = 0x16;
+    public static final byte INS_SIGNATURE = 0x14;
+    public static final byte INS_RESET = 0x16;
 
     public static final byte P1_SET_D = 0x00;
     public static final byte P1_SET_N = 0x01;
@@ -102,7 +102,7 @@ public class ClientSignAPDU {
 
         for (int i = num.length; i > 0; i -= MAX_APDU_LENGTH) {
             cmds.add(new CommandAPDU(
-                    CLA_RSA_SMPC_CLIENT_SIGN, ins, p1, (i / MAX_APDU_LENGTH > 0 ? P2_PART_0 : P2_PART_1) | P2_DIVIDED,
+                    CLA_RSA_SMPC_CLIENT_SIGN, ins, p1, (num.length / MAX_APDU_LENGTH - i / MAX_APDU_LENGTH) | P2_DIVIDED,
                     Arrays.copyOfRange(num, i - MAX_APDU_LENGTH > 0 ? i - MAX_APDU_LENGTH : 0, i)
             ));
         }

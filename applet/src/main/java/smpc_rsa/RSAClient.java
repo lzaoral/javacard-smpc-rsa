@@ -48,7 +48,7 @@ public class RSAClient extends Applet {
      */
     private static final short ARR_LEN = 256;
 
-    private final static byte[] E = new byte[]{0x01, 0x00, 0x01};
+    private final byte[] E = new byte[]{0x01, 0x00, 0x01};
     private final byte[] tmpBuffer;
     private final byte[] d1ServerBuffer;
 

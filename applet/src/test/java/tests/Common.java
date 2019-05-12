@@ -1,6 +1,8 @@
 package tests;
 
 public class Common {
+    private Common() {}
+
     public static final String CLIENT_KEYS_CLIENT_FILE = "client_card.key";
     public static final String CLIENT_KEYS_SERVER_FILE = "for_server.key";
     public static final String SERVER_KEYS_FILE = "server.key";

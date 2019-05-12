@@ -4,7 +4,10 @@ import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
+
+import static tests.server.ServerAPDU.*;
 
 /**
  * Example test class for the applet
@@ -14,7 +17,7 @@ import javax.smartcardio.ResponseAPDU;
  */
 public class ServerTest {
 
-    private static boolean realCard = false;
+    private static boolean realCard = true;
     private static int SW_OK = 0x9000;
     private ServerAPDU server;
 
@@ -23,21 +26,23 @@ public class ServerTest {
         server = new ServerAPDU(realCard);
     }
 
-    /*@BeforeMethod
     public void setUp() throws Exception {
-        client.transmit(new CommandAPDU(CLA_RSA_SMPC_CLIENT_SIGN, INS_RESET, 0x00, 0x00));
-    }*/
+        server.transmit(new CommandAPDU(CLA_RSA_SMPC_SERVER, INS_RESET, 0x00, 0x00));
+        server.setDebug(true);
+    }
 
     @Test
     public void simpleSign() throws Exception {
-        Assert.assertEquals(SW_OK, server.generateKeys().getSW());
-        server.setClientKeys();
+        for (int i = 0; i < 200; ++i) {
+            setUp();
 
-        for (ResponseAPDU res : server.getPublicModulus())
-            Assert.assertEquals(SW_OK, res.getSW());
+            System.out.println(server.generateKeys().getSW());
+            server.setClientKeys();
 
-        Assert.assertEquals(SW_OK,server.signMessage().getSW());
+            if (server.getPublicModulus().get(0).getSW() != SW_OK)
+                continue;
 
-        //TODO: get signature
+            System.out.println(server.signMessage().getSW());
+        }
     }
 }

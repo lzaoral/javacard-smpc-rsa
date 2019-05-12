@@ -22,7 +22,7 @@ import static tests.client_sign.ClientSignAPDU.*;
 public class ClientSignTest {
 
     private static int SW_OK = 0x9000;
-    private static boolean realCard = false;
+    private static boolean realCard = true;
     private ClientSignAPDU client;
 
     @BeforeClass
@@ -33,6 +33,7 @@ public class ClientSignTest {
     @BeforeMethod
     public void setUp() throws Exception {
         client.transmit(new CommandAPDU(CLA_RSA_SMPC_CLIENT_SIGN, INS_RESET, 0x00, 0x00));
+        client.setDebug(true);
     }
 
     @Test
