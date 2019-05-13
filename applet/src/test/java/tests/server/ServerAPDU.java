@@ -28,7 +28,7 @@ import java.util.Arrays;
  * @author Petr Svenda, Dusan Klinec (ph4r05)
  */
 public class ServerAPDU {
-    public static final byte CLA_RSA_SMPC_SERVER = (byte) 0x83;
+    public static final byte CLA_RSA_SMPC_SERVER = (byte) 0xA0;
 
     public static final byte INS_GENERATE_KEYS = 0x10;
     public static final byte INS_SET_CLIENT_KEYS = 0x12;

@@ -21,10 +21,10 @@ import static tests.client_full.ClientFullAPDU.*;
  */
 public class ClientFullTest {
 
-    private static final int TEST_COUNT = 0;
+    private static final int TEST_COUNT = 100;
     private static final int SW_OK = 0x9000;
 
-    private static boolean realCard = false;
+    private static boolean realCard = true;
     private ClientFullAPDU client;
 
     @BeforeClass

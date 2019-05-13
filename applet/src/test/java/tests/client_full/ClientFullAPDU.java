@@ -32,7 +32,7 @@ import static tests.Common.*;
  * @author Petr Svenda, Dusan Klinec (ph4r05), Lukas Zaoral
  */
 public class ClientFullAPDU {
-    public static final byte CLA_RSA_SMPC_CLIENT = (byte) 0x81;
+    public static final byte CLA_RSA_SMPC_CLIENT = (byte) 0x90;
 
     public static final byte INS_GENERATE_KEYS = 0x10;
     public static final byte INS_GET_KEYS = 0x12;

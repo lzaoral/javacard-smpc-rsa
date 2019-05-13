@@ -28,7 +28,7 @@ import javacardx.crypto.Cipher;
  * @author Lukas Zaoral
  */
 public class RSAClient extends Applet {
-    private static final byte CLA_RSA_SMPC_CLIENT = (byte) 0x81;
+    private static final byte CLA_RSA_SMPC_CLIENT = (byte) 0x90;
 
     /**
      * Instruction codes
@@ -38,7 +38,6 @@ public class RSAClient extends Applet {
     private static final byte INS_SET_MESSAGE = 0x14;
     private static final byte INS_SIGNATURE = 0x16;
     private static final byte INS_RESET = 0x18;
-
 
     /**
      * P1 parameters of the INS_GET_KEYS instruction
@@ -170,13 +169,12 @@ public class RSAClient extends Applet {
             rsaPair.genKeyPair();
             privateKey.getExponent(d1ServerBuffer, (short) 0);
 
-            // d1Client is one byte shorter to be smaller than phi(n)
-            // computing phi(n) !!on a smart card!! is a madness
-            // very rarely creates non-valid private key shares
-            rng.generateData(tmpBuffer, (short) 1, (short) (tmpBuffer.length - 1));
+            do {
+                rng.generateData(tmpBuffer, (short) 0, (short) tmpBuffer.length);
+            } while (Common.lesser(d1ServerBuffer, tmpBuffer));
             Common.subtract(d1ServerBuffer, tmpBuffer);
 
-            privateKey.setExponent(tmpBuffer, (short) 1, (short) (tmpBuffer.length - 1));
+            privateKey.setExponent(tmpBuffer, (short) 0, (short) tmpBuffer.length);
             rsa.init(privateKey, Cipher.MODE_DECRYPT);
         } catch (CryptoException e) {
             ISOException.throwIt(e.getReason());
@@ -206,19 +204,20 @@ public class RSAClient extends Applet {
         byte p1 = apduBuffer[ISO7816.OFFSET_P1];
 
         switch (p1) {
-            case P1_GET_N1:
-                if (keysSent[p1] == Common.DATA_TRANSFERRED)
-                    ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
-
-                Common.sendNum(apdu, tmpBuffer, (short) 0, true);
-                keysSent[p1] = Common.DATA_TRANSFERRED;
-                break;
-
             case P1_GET_D1_SERVER:
                 if (keysSent[p1] == Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
                 Common.sendNum(apdu, d1ServerBuffer, (short) 0, true);
+                keysSent[p1] = Common.DATA_TRANSFERRED;
+                break;
+
+            case P1_GET_N1:
+                if (keysSent[p1] == Common.DATA_TRANSFERRED)
+                    ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+
+                privateKey.getModulus(tmpBuffer, (short) 0);
+                Common.sendNum(apdu, tmpBuffer, (short) 0, true);
                 keysSent[p1] = Common.DATA_TRANSFERRED;
                 break;
 

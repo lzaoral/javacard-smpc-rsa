@@ -37,7 +37,7 @@ public class Common {
 
     // from JCMathLib
     public static final byte HIGHEST_BIT_MASK = (byte) 0x80;
-    private static final byte DIGIT_MASK = (byte) 0xFF;
+    private static final short DIGIT_MASK = 0xFF;
     private static final byte DIGIT_LENGTH = 8;
 
     /**
@@ -131,7 +131,7 @@ public class Common {
     }
 
     /**
-     * Checks that the P1 and P2 bytes in the `apduBuffer` are set to zero.
+     * Checks that the P1 and P2 bytes in the {@code apduBuffer} are set to zero.
      *
      * @param apduBuffer apduBuffer
      * @throws ISOException SW_INCORRECT_P1P2
@@ -161,9 +161,9 @@ public class Common {
 
     /**
      * Sends the given array from given offset and then clears
-     * its depending on the `clearAll` parameter contents.
+     * its depending on the {@code clearAll} parameter contents.
      *
-     * The length of sent data depends on the `MAX_RESPONSE_APDU_LENGTH` constant.
+     * The length of sent data depends on the {@code MAX_RESPONSE_APDU_LENGTH} constant.
      *
      * @param apdu object representing the communication between the card and the world
      * @param num array to be sent
@@ -225,5 +225,33 @@ public class Common {
             i--;
         }
     }
+
+    /**
+     * Comparison of two byte arrays.
+     * Function was taken from the JCMathLib library and adapted.
+     *
+     * @author Vasilios Mavroudis and Petr Svenda, adapted by Lukáš Zaoral
+     * @param a byte array
+     * @param b byte array
+     * @return true if this a is strictly lesser than {@code b}, false otherwise.
+     */
+    public static boolean lesser(byte[] a, byte[] b) {
+        short j = (short) (b.length - a.length);
+        short aShort, bShort;
+
+        for (short i = 0; i < a.length; i++, j++) {
+            aShort = (short) (a[i] & DIGIT_MASK);
+            bShort = j >= 0 && j < b.length ? (short) (b[j] & DIGIT_MASK) : 0;
+
+            if (aShort < bShort)
+                return true;
+
+            if (aShort > bShort)
+                return false;
+        }
+
+        return false;
+    }
+
 
 }
