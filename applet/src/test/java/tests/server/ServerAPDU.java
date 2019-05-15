@@ -28,18 +28,18 @@ import java.util.Arrays;
  * @author Petr Svenda, Dusan Klinec (ph4r05)
  */
 public class ServerAPDU {
-    public static final byte CLA_RSA_SMPC_SERVER = (byte) 0xA0;
+    public static final byte CLA_RSA_SMPC_SERVER = (byte) 0x80;
 
     public static final byte INS_GENERATE_KEYS = 0x10;
     public static final byte INS_SET_CLIENT_KEYS = 0x12;
-    public static final byte INS_GET_PUBLIC_N = 0x14;
+    public static final byte INS_GET_PUBLIC_MODULUS = 0x14;
     public static final byte INS_SET_CLIENT_SIGNATURE = 0x16;
     public static final byte INS_SIGNATURE = 0x18;
     public static final byte INS_GET_SIGNATURE = 0x20;
     public static final byte INS_RESET = 0x22;
 
-    public static final byte P1_SET_N1 = 0x00;
-    public static final byte P1_SET_D1_SERVER = 0x01;
+    public static final byte P1_SET_D1_SERVER = 0x00;
+    public static final byte P1_SET_N1 = 0x01;
 
     public static final byte P1_SET_MESSAGE = 0x00;
     public static final byte P1_SET_SIGNATURE = 0x01;
@@ -56,12 +56,11 @@ public class ServerAPDU {
 
     public static final String TEST_PATH = "src/test/java/tests/server/";
     public static final String CLIENT_KEY_SERVER_SHARE_FILE = TEST_PATH + "for_server.key";
-    public static final String MESSAGE_FILE = TEST_PATH + "message.txt";
     public static final String CLIENT_SHARE_SIG_FILE = TEST_PATH + "client.sig";
     public static final String PUBLIC_KEY_FILE = TEST_PATH + "public.key";
     public static final String FINAL_SIG_FILE = TEST_PATH + "final.sig";
 
-    private static String APPLET_AID = "0102030405060708090304";
+    private static String APPLET_AID = "0102030405060708090104";
     private static byte[] APPLET_AID_BYTE = Util.hexStringToByteArray(APPLET_AID);
 
     private static final CardManager cardMgr = new CardManager(APPLET_AID_BYTE);
@@ -172,11 +171,11 @@ public class ServerAPDU {
 
         // zjednodusit
         res.add(transmit(new CommandAPDU(
-            CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_N, 0x00, P2_PART_0
+            CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, 0x00, P2_PART_0
         )));
 
         res.add(transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_N, 0x00, P2_PART_1
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, 0x00, P2_PART_1
         )));
 
         try (OutputStream out = new FileOutputStream(PUBLIC_KEY_FILE)) {

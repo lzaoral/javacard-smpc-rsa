@@ -1,6 +1,7 @@
 package smpc_rsa;
 
 import javacard.framework.APDU;
+import javacard.framework.APDUException;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.Util;
@@ -30,7 +31,7 @@ public class Common {
     /**
      * Constants
      */
-    public static final byte DATA_TRANSFERRED = 0x20;
+    public static final byte DATA_TRANSFERRED = 0x22;
     public static final short PARTIAL_MODULUS_BYTE_LENGTH = 256;
     public static final short MAX_COMMAND_APDU_LENGTH = 255;
     public static final short MAX_RESPONSE_APDU_LENGTH = 256;
@@ -112,6 +113,8 @@ public class Common {
      * @param rsa RSA cipher
      * @throws ISOException SW_CONDITIONS_NOT_SATISFIED if the keys or message have not yet been fully set
      * @throws ISOException SW_INCORRECT_P1P2
+     * @throws ISOException with {@link CryptoException} reason
+     * @throws ISOException with {@link APDUException} reason
      */
     public static void clientSignMessage(APDU apdu, byte[] message, byte messageState, Cipher rsa) {
         if (messageState != DATA_TRANSFERRED)
@@ -127,7 +130,12 @@ public class Common {
         }
 
         clearByteArray(message);
-        apdu.setOutgoingAndSend((short) 0, (short) message.length);
+
+        try {
+            apdu.setOutgoingAndSend((short) 0, (short) message.length);
+        } catch (APDUException e) {
+            ISOException.throwIt(e.getReason());
+        }
     }
 
     /**
@@ -169,6 +177,7 @@ public class Common {
      * @param num array to be sent
      * @param offset offset to send from
      * @param clearAll decides whether the array will be zeroed
+     * @throws ISOException with {@link APDUException} reason
      */
     public static void sendNum(APDU apdu, byte[] num, short offset, boolean clearAll) {
         Util.arrayCopyNonAtomic(num, offset, apdu.getBuffer(), (short) 0, MAX_RESPONSE_APDU_LENGTH);
@@ -176,7 +185,11 @@ public class Common {
         if (clearAll)
             Common.clearByteArray(num);
 
-        apdu.setOutgoingAndSend((short) 0, MAX_RESPONSE_APDU_LENGTH);
+        try {
+            apdu.setOutgoingAndSend((short) 0, MAX_RESPONSE_APDU_LENGTH);
+        } catch (APDUException e) {
+            ISOException.throwIt(e.getReason());
+        }
     }
 
     /**
@@ -189,59 +202,53 @@ public class Common {
     }
 
     /**
-     * Subtract a number from another one stored in a byte array.
+     * Subtract a number {@code a} from {@code b} stored in a byte arrays
+     * of the same length.
      * Function was taken from the JCMathLib library and adapted.
      *
-     * @author Vasilios Mavroudis and Petr Svenda, adapted by Lukáš Zaoral
+     * @author Vasilios Mavroudis and Petr Svenda, adapted by Lukas Zaoral
      * @param a byte array
      * @param b byte array
+     * @throws ISOException SW_WRONG_LENGTH if the arrays are of different length
      */
     public static void subtract(byte[] a, byte[] b) {
-        short akku = 0;
+        if (a.length != b.length)
+            ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+
+        short acc = 0;
         short subtraction_result;
-        short i = (short) (a.length - 1);
-        short j = (short) (b.length - 1);
 
-        for (; i >= 0 && j >= 0; i--, j--) {
-            akku = (short) (akku + (short) (b[j] & DIGIT_MASK));
-            subtraction_result = (short) ((a[i] & DIGIT_MASK) - (akku & DIGIT_MASK));
+        for (short i = (short) (a.length - 1); i >= 0 ; i--) {
+            acc = (short) (acc + (short) (b[i] & DIGIT_MASK));
+            subtraction_result = (short) ((a[i] & DIGIT_MASK) - (acc & DIGIT_MASK));
 
             a[i] = (byte) (subtraction_result & DIGIT_MASK);
-            akku = (short) ((akku >> DIGIT_LENGTH) & DIGIT_MASK);
-            if (subtraction_result < 0) {
-                akku++;
-            }
-        }
+            acc = (short) ((acc >> DIGIT_LENGTH) & DIGIT_MASK);
 
-        // deal with carry as long as there are digits left in this
-        while (i >= 0 && akku != 0) {
-            subtraction_result = (short) ((a[i] & DIGIT_MASK) - (akku & DIGIT_MASK));
-            a[i] = (byte) (subtraction_result & DIGIT_MASK);
-            akku = (short) ((akku >> DIGIT_LENGTH) & DIGIT_MASK);
-
-            if (subtraction_result < 0) {
-                akku++;
-            }
-            i--;
+            if (subtraction_result < 0)
+                acc++;
         }
     }
 
     /**
-     * Comparison of two byte arrays.
+     * Comparison of two byte arrays of the same length.
      * Function was taken from the JCMathLib library and adapted.
      *
-     * @author Vasilios Mavroudis and Petr Svenda, adapted by Lukáš Zaoral
+     * @author Vasilios Mavroudis and Petr Svenda, adapted by Lukas Zaoral
      * @param a byte array
      * @param b byte array
-     * @return true if this a is strictly lesser than {@code b}, false otherwise.
+     * @return true if {@code a} is strictly less than {@code b}, false otherwise.
+     * @throws ISOException SW_WRONG_LENGTH if the arrays are of different length
      */
-    public static boolean lesser(byte[] a, byte[] b) {
-        short j = (short) (b.length - a.length);
+    public static boolean lessThan(byte[] a, byte[] b) {
+        if (a.length != b.length)
+            ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+
         short aShort, bShort;
 
-        for (short i = 0; i < a.length; i++, j++) {
+        for (short i = 0; i < a.length; i++) {
             aShort = (short) (a[i] & DIGIT_MASK);
-            bShort = j >= 0 && j < b.length ? (short) (b[j] & DIGIT_MASK) : 0;
+            bShort = (short) (b[i] & DIGIT_MASK);
 
             if (aShort < bShort)
                 return true;

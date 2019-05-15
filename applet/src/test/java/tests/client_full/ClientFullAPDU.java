@@ -32,7 +32,7 @@ import static tests.Common.*;
  * @author Petr Svenda, Dusan Klinec (ph4r05), Lukas Zaoral
  */
 public class ClientFullAPDU {
-    public static final byte CLA_RSA_SMPC_CLIENT = (byte) 0x90;
+    public static final byte CLA_RSA_SMPC_CLIENT = (byte) 0x80;
 
     public static final byte INS_GENERATE_KEYS = 0x10;
     public static final byte INS_GET_KEYS = 0x12;
@@ -40,8 +40,8 @@ public class ClientFullAPDU {
     public static final byte INS_SIGNATURE = 0x16;
     public static final byte INS_RESET = 0x18;
 
-    public static final byte P1_GET_N = 0x00;
-    public static final byte P1_GET_D1_SERVER = 0x01;
+    public static final byte P1_GET_D1_SERVER = 0x00;
+    public static final byte P1_GET_N = 0x01;
 
     public static final byte P2_PART_0 = 0x00;
     public static final byte P2_PART_1 = 0x01;
@@ -58,7 +58,7 @@ public class ClientFullAPDU {
     public static final short CLIENT_ARR_LENGTH = 256;
     private static final short MAX_APDU_LENGTH = 0xFF;
 
-    private static String APPLET_AID = "0102030405060708090203";
+    private static String APPLET_AID = "0102030405060708090103";
     private static byte[] APPLET_AID_BYTE = Util.hexStringToByteArray(APPLET_AID);
 
     private static final CardManager cardMgr = new CardManager(APPLET_AID_BYTE);
@@ -83,7 +83,7 @@ public class ClientFullAPDU {
         System.out.print("Connecting to card...");
         if (!cardMgr.Connect(runCfg)) {
             System.out.println(" Fail.");
-            return;
+            throw new CardException("Card or terminal not found.");
         }
         System.out.println(" Done.");
     }

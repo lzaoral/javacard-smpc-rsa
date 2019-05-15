@@ -12,15 +12,13 @@ import javacard.security.RSAPrivateKey;
 
 import javacardx.crypto.Cipher;
 
-// TODO: cryptoexception
-
 /**
- * The {@link RSAClientSign} class represents JavaCard Applet used solely for
- * the purpose of client signing. The RSA keys must be provided by the user prior
- * to other use.
+ * The {@link RSAClientSign} class represents JavaCard applet used
+ * solely for the purpose of client signing. The RSA keys must be
+ * provided by the user prior to other use.
  *
- * It is recommended to use the provided proxy application to send commands
- * to the given card.
+ * It is recommended to use the provided proxy application
+ * to send commands to the given card.
  *
  * @author Lukas Zaoral
  */
@@ -60,7 +58,7 @@ public class RSAClientSign extends Applet {
     private RSAPrivateKey privateKey;
 
     /**
-     * Creates the instance of this Applet. Used by the JavaCard runtime itself.
+     * Creates the instance of this applet. Used by the JavaCard runtime itself.
      *
      * Installation parameters
      * @param bArray bArray
@@ -72,12 +70,13 @@ public class RSAClientSign extends Applet {
     }
 
     /**
-     * Constructor of {@link RSAClientSign} class. Allocates and created all used objects.
+     * Constructor of {@link RSAClientSign} class. Allocates and creates all used objects.
      *
      * Installation parameters
      * @param bArray bArray
      * @param bOffset bOffset
      * @param bLength bLength
+     * @throws ISOException with {@link CryptoException} reason
      */
     public RSAClientSign(byte[] bArray, short bOffset, byte bLength) {
         tmpBuffer = JCSystem.makeTransientByteArray(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.CLEAR_ON_RESET);
@@ -113,10 +112,6 @@ public class RSAClientSign extends Applet {
                 setRSAKeys(apdu);
                 break;
 
-            case INS_RESET:
-                reset(apdu);
-                break;
-
             case INS_SET_MESSAGE:
                 messageState = Common.setMessage(apdu, tmpBuffer, messageState, privateKey);
                 break;
@@ -124,6 +119,10 @@ public class RSAClientSign extends Applet {
             case INS_SIGNATURE:
                 Common.clientSignMessage(apdu, tmpBuffer, messageState, rsa);
                 messageState = 0x00;
+                break;
+
+            case INS_RESET:
+                reset(apdu);
                 break;
 
             default:
@@ -188,14 +187,12 @@ public class RSAClientSign extends Applet {
      * @throws ISOException SW_COMMAND_NOT_ALLOWED if the given key part is set more than once
      * @throws ISOException SW_WRONG_LENGTH if the partial modulus n1 is shorter
      * @throws ISOException SW_INCORRECT_P1P2
+     * @throws ISOException with CryptoException reason
      */
     private void updateKey(APDU apdu) {
         byte[] apduBuffer = apdu.getBuffer();
         byte p1 = apduBuffer[ISO7816.OFFSET_P1];
         byte p2 = apduBuffer[ISO7816.OFFSET_P2];
-
-        if (p1 != P1_SET_D1_CLIENT && p1 != P1_SET_N1)
-            ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
         keyState[p1] = Common.updateLoadState(keyState[p1], p2);
         if (keyState[p1] != Common.DATA_TRANSFERRED)

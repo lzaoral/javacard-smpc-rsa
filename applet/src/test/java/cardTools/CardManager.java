@@ -111,6 +111,7 @@ public class CardManager {
                 System.out.println("Success.");
         } catch (Exception e) {
             System.out.println("Failed.");
+            return null;
         }
 
         if (card_found) {
@@ -138,7 +139,10 @@ public class CardManager {
                 System.out.println("Smartcard: Selecting applet...");
 
             CommandAPDU cmd = new CommandAPDU(0x00, 0xa4, 0x04, 0x00, appletId);
-            ResponseAPDU response = transmit(cmd);
+            if (transmit(cmd).getSW() != 0x9000) {
+                System.err.println("Applet not installed");
+                return null;
+            }
         } else {
             System.out.print("Failed to find physical card.");
         }

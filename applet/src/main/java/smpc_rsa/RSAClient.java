@@ -15,12 +15,9 @@ import javacard.security.RandomData;
 
 import javacardx.crypto.Cipher;
 
-// TODO: cryptoexception
-
 /**
- * The {@link RSAClient} class represents JavaCard Applet
- * used solely for the purpose of signing. RSA keys must be
- * provided by the user prior to other use.
+ * The {@link RSAClient} class represents JavaCard applet used
+ * for the purpose of client signing.
  *
  * It is recommended to use the provided proxy application
  * to send commands to the given card.
@@ -28,7 +25,8 @@ import javacardx.crypto.Cipher;
  * @author Lukas Zaoral
  */
 public class RSAClient extends Applet {
-    private static final byte CLA_RSA_SMPC_CLIENT = (byte) 0x90;
+
+    private static final byte CLA_RSA_SMPC_CLIENT = (byte) 0x80; // TODO:
 
     /**
      * Instruction codes
@@ -64,8 +62,8 @@ public class RSAClient extends Applet {
     private RandomData rng;
     private KeyPair rsaPair;
     private RSAPrivateKey privateKey;
-    private Cipher rsa;
     private RSAPublicKey publicKey;
+    private Cipher rsa;
 
     /**
      * Creates the instance of this Applet. Used by the JavaCard runtime itself.
@@ -80,12 +78,13 @@ public class RSAClient extends Applet {
     }
 
     /**
-     * Constructor of {@link RSAClient} class. Allocates and created all used objects.
+     * Constructor of {@link RSAClient} class. Allocates and creates all used objects.
      *
      * Installation parameters
      * @param bArray bArray
      * @param bOffset bOffset
      * @param bLength bLength
+     * @throws ISOException with {@link CryptoException} reason
      */
     public RSAClient(byte[] bArray, short bOffset, byte bLength) {
         tmpBuffer = JCSystem.makeTransientByteArray(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.CLEAR_ON_RESET);
@@ -134,12 +133,13 @@ public class RSAClient extends Applet {
                 setMessage(apdu);
                 break;
 
-            case INS_RESET:
-                reset(apdu);
-                break;
-
             case INS_SIGNATURE:
                 Common.clientSignMessage(apdu, tmpBuffer, messageState, rsa);
+                messageState = 0x00;
+                break;
+
+            case INS_RESET:
+                reset(apdu);
                 break;
 
             default:
@@ -155,13 +155,13 @@ public class RSAClient extends Applet {
      * @param apdu object representing the communication between the card and the world
      * @throws ISOException SW_COMMAND_NOT_ALLOWED if the keys have already been generated
      * @throws ISOException SW_INCORRECT_P1P2
+     * @throws ISOException with {@link CryptoException} reason
      */
     private void generateRSAKeys(APDU apdu) {
         if (privateKey.isInitialized() || publicKey.isInitialized())
             ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-        byte[] apduBuffer = apdu.getBuffer();
-        Common.checkZeroP1P2(apduBuffer);
+        Common.checkZeroP1P2(apdu.getBuffer());
 
         try {
             publicKey.setExponent(E, (short) 0, (short) E.length);
@@ -171,7 +171,7 @@ public class RSAClient extends Applet {
 
             do {
                 rng.generateData(tmpBuffer, (short) 0, (short) tmpBuffer.length);
-            } while (Common.lesser(d1ServerBuffer, tmpBuffer));
+            } while (!Common.lessThan(tmpBuffer, d1ServerBuffer));
             Common.subtract(d1ServerBuffer, tmpBuffer);
 
             privateKey.setExponent(tmpBuffer, (short) 0, (short) tmpBuffer.length);
@@ -193,7 +193,7 @@ public class RSAClient extends Applet {
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void getRSAKeys(APDU apdu) {
-        if (!privateKey.isInitialized())
+        if (!privateKey.isInitialized() || !publicKey.isInitialized())
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         byte[] apduBuffer = apdu.getBuffer();

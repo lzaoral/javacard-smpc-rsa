@@ -1,35 +1,33 @@
 package tests.client_full;
 
-import javacard.framework.ISO7816;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
-import java.io.*;
 
 import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.io.*;
+
 import static javacard.framework.ISO7816.*;
 import static tests.client_full.ClientFullAPDU.*;
 
 /**
- * Example test class for the applet
- * Note: If simulator cannot be started try adding "-noverify" JVM parameter
+ * Test class for the Client-Full applet.
  *
- * @author xsvenda, Dusan Klinec (ph4r05), Lukas Zaoral
+ * @author Lukas Zaoral
  */
 public class ClientFullTest {
 
-    private static final int TEST_COUNT = 100;
+    private static final boolean REAL_CARD = false;
+    private static final int TEST_COUNT = 10;
     private static final int SW_OK = 0x9000;
-
-    private static boolean realCard = true;
     private ClientFullAPDU client;
 
     @BeforeClass
     public void setClass() throws Exception {
-        client = new ClientFullAPDU(realCard);
+        client = new ClientFullAPDU(REAL_CARD);
     }
 
     @BeforeMethod
@@ -39,7 +37,7 @@ public class ClientFullTest {
     }
 
     @Test
-    public void wrongCLA() throws Exception {
+    public void clientFullWrongCLA() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 0xFF, 0x00, 0x00, 0x00
         ));
@@ -50,18 +48,18 @@ public class ClientFullTest {
     }
 
     @Test
-    public void wrongINS() throws Exception {
+    public void clientFullWrongINS() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, 0xFF, 0x00, 0x00
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INS_NOT_SUPPORTED, res.getSW());
+        Assert.assertEquals(SW_INS_NOT_SUPPORTED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void generateKeysWrongP1() throws Exception {
+    public void clientFullGenerateKeysWrongP1() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GENERATE_KEYS, 0x0F, 0x00
         ));
@@ -72,7 +70,7 @@ public class ClientFullTest {
     }
 
     @Test
-    public void generateKeysWrongP2() throws Exception {
+    public void clientFullGenerateKeysWrongP2() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GENERATE_KEYS, 0x00, 0x0F
         ));
@@ -83,7 +81,7 @@ public class ClientFullTest {
     }
 
     @Test
-    public void generateKeys() throws Exception {
+    public void clientFullGenerateKeys() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GENERATE_KEYS, 0x00, 0x00
         ));
@@ -94,8 +92,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void generateKeysTwice() throws Exception {
-        generateKeys();
+    public void clientFullGenerateKeysTwice() throws Exception {
+        clientFullGenerateKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GENERATE_KEYS, 0x00, 0x00
@@ -107,8 +105,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void generateKeysAfterReset() throws Exception {
-        generateKeys();
+    public void clientFullGenerateKeysAfterReset() throws Exception {
+        clientFullGenerateKeys();
 
         ResponseAPDU responseAPDU = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_RESET, 0x00, 0x00
@@ -116,11 +114,11 @@ public class ClientFullTest {
         Assert.assertEquals(0x9000, responseAPDU.getSW());
         Assert.assertEquals(0, responseAPDU.getData().length);
 
-        generateKeys();
+        clientFullGenerateKeys();
     }
 
     @Test
-    public void resetCard() throws Exception {
+    public void clientFullResetCard() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_RESET, 0x00, 0x00
         ));
@@ -131,8 +129,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void resetWrongP1() throws Exception {
-        generateKeys();
+    public void clientFullResetWrongP1() throws Exception {
+        clientFullGenerateKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_RESET, 0xFF, 0x00
@@ -152,8 +150,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void resetWrongP2() throws Exception {
-        generateKeys();
+    public void clientFullResetWrongP2() throws Exception {
+        clientFullGenerateKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_RESET, 0x00, 0xFF
@@ -173,7 +171,7 @@ public class ClientFullTest {
     }
 
     @Test
-    public void getKeysWithoutGeneration() throws Exception {
+    public void clientFullGetKeysWithoutGeneration() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GET_KEYS, 0x00, 0x00, CLIENT_ARR_LENGTH
         ));
@@ -184,8 +182,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void getKeysWrongP1() throws Exception {
-        generateKeys();
+    public void clientFullGetKeysWrongP1() throws Exception {
+        clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GET_KEYS, 0xFF, 0x00, CLIENT_ARR_LENGTH
         ));
@@ -196,8 +194,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void getKeysWrongP2() throws Exception {
-        generateKeys();
+    public void clientFullGetKeysWrongP2() throws Exception {
+        clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GET_KEYS, 0x00, 0xFF, CLIENT_ARR_LENGTH
         ));
@@ -208,8 +206,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void getN() throws Exception {
-        generateKeys();
+    public void clientFullGetN() throws Exception {
+        clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GET_KEYS, P1_GET_N, 0x00, CLIENT_ARR_LENGTH
         ));
@@ -220,8 +218,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void getNTwice() throws Exception {
-        generateKeys();
+    public void clientFullGetNTwice() throws Exception {
+        clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GET_KEYS, P1_GET_N, 0x00, CLIENT_ARR_LENGTH
         ));
@@ -240,8 +238,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void getD() throws Exception {
-        generateKeys();
+    public void clientFullGetD() throws Exception {
+        clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GET_KEYS, P1_GET_D1_SERVER, 0x00, CLIENT_ARR_LENGTH
         ));
@@ -252,8 +250,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void getDTwice() throws Exception {
-        generateKeys();
+    public void clientFullGetDTwice() throws Exception {
+        clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GET_KEYS, P1_GET_D1_SERVER, 0x00, CLIENT_ARR_LENGTH
         ));
@@ -272,8 +270,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void getKeys() throws Exception {
-        generateKeys();
+    public void clientFullGetKeys() throws Exception {
+        clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GET_KEYS, P1_GET_D1_SERVER, 0x00, CLIENT_ARR_LENGTH
         ));
@@ -292,8 +290,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void getKeysSwitched() throws Exception {
-        generateKeys();
+    public void clientFullGetKeysSwitched() throws Exception {
+        clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GET_KEYS, P1_GET_N, 0x00, CLIENT_ARR_LENGTH
         ));
@@ -312,7 +310,7 @@ public class ClientFullTest {
     }
 
     @Test
-    public void setMessageNoKeys() throws Exception {
+    public void clientFullSetMessageNoKeys() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
@@ -323,8 +321,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void setMessageNoSentKeys() throws Exception {
-        generateKeys();
+    public void clientFullSetMessageNoSentKeys() throws Exception {
+        clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
@@ -335,8 +333,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void setMessageSentD() throws Exception {
-        getD();
+    public void clientFullSetMessageSentD() throws Exception {
+        clientFullGetD();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
@@ -347,8 +345,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void setMessageSentN() throws Exception {
-        getN();
+    public void clientFullSetMessageSentN() throws Exception {
+        clientFullGetN();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
@@ -359,8 +357,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void setSimpleMessage() throws Exception {
-        getKeys();
+    public void clientFullSetSimpleMessage() throws Exception {
+        clientFullGetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
@@ -372,8 +370,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void setMultipartMessage() throws Exception {
-        getKeys();
+    public void clientFullSetMultipartMessage() throws Exception {
+        clientFullGetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
@@ -393,8 +391,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void setMultipartMessageTwice() throws Exception {
-        getKeys();
+    public void clientFullSetMultipartMessageTwice() throws Exception {
+        clientFullGetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
@@ -430,8 +428,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void setMultipartMessageTwiceSwap() throws Exception {
-        getKeys();
+    public void clientFullSetMultipartMessageTwiceSwap() throws Exception {
+        clientFullGetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
@@ -467,8 +465,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void resetMessage() throws Exception {
-        getKeys();
+    public void clientFullResetMessage() throws Exception {
+        clientFullGetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
@@ -488,8 +486,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void resetMultipartMessage() throws Exception {
-        getKeys();
+    public void clientFullResetMultipartMessage() throws Exception {
+        clientFullGetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
@@ -525,8 +523,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void setMultipartMessageSwap() throws Exception {
-        getKeys();
+    public void clientFullSetMultipartMessageSwap() throws Exception {
+        clientFullGetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
@@ -546,8 +544,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void setMessageIncorrectP1() throws Exception {
-        getKeys();
+    public void clientFullSetMessageIncorrectP1() throws Exception {
+        clientFullGetKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x01, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
@@ -566,7 +564,7 @@ public class ClientFullTest {
     }
 
     @Test
-    public void signNoKey() throws Exception {
+    public void clientFullSignNoKey() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SIGNATURE, 0x00, 0x00
         ));
@@ -577,8 +575,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void signNoMessage() throws Exception {
-        generateKeys();
+    public void clientFullSignNoMessage() throws Exception {
+        clientFullGenerateKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SIGNATURE, 0x00, 0x00
@@ -590,8 +588,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void signPartialMessage() throws Exception {
-        getKeys();
+    public void clientFullSignPartialMessage() throws Exception {
+        clientFullGetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
@@ -611,8 +609,8 @@ public class ClientFullTest {
     }
 
     @Test
-    public void signBadP1P2() throws Exception {
-        setSimpleMessage();
+    public void clientFullSignBadP1P2() throws Exception {
+        clientFullSetSimpleMessage();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SIGNATURE, 0xFF, 0x00
@@ -632,7 +630,7 @@ public class ClientFullTest {
     }
 
     @Test
-    public void simpleSign() throws Exception {
+    public void clientFullSimpleSign() throws Exception {
         ResponseAPDU res = client.generateKeys();
         Assert.assertEquals(SW_OK, res.getSW());
         Assert.assertEquals(0, res.getData().length);
@@ -645,7 +643,26 @@ public class ClientFullTest {
     }
 
     @Test
-    public void signStressTest() throws Exception {
+    public void clientFullMultiSign() throws Exception {
+        ResponseAPDU res = client.generateKeys();
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+
+        client.getKeys();
+
+        res = client.signMessage();
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+
+        res = client.signMessage();
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+    }
+
+    @Test
+    public void clientFullStressTest() throws Exception {
+        System.out.println("This test requires the reference 'smpc_rsa' in the tests (../) folder.");
+
         ProcessBuilder serverGenerate = new ProcessBuilder("./../smpc_rsa", "server", "generate").directory(new File(TEST_PATH));
         ProcessBuilder serverSign = new ProcessBuilder("./../smpc_rsa", "server", "sign").directory(new File(TEST_PATH));
         ProcessBuilder serverVerify = new ProcessBuilder("./../smpc_rsa", "server", "verify").directory(new File(TEST_PATH));
@@ -655,11 +672,15 @@ public class ClientFullTest {
         int nokGenCount = 0;
         int nokSignCount = 0;
 
+        System.out.println("Runs the applet against reference implementation.");
+        System.out.println("Each test may fail only when the modulus is unusable.");
+        System.out.println("Due to a bug in emulator, the test may very rarely fail with a wrong signature.");
+
         for (int i = 1; i <= TEST_COUNT; i++) {
             System.out.printf("TEST %d: ", i);
             System.out.flush();
 
-            resetCard();
+            clientFullResetCard();
 
             ResponseAPDU responseAPDU = client.generateKeys();
             Assert.assertEquals(SW_OK, responseAPDU.getSW());

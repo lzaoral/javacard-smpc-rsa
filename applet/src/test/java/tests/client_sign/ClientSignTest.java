@@ -1,6 +1,5 @@
 package tests.client_sign;
 
-import javacard.framework.ISO7816;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 
@@ -9,25 +8,28 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.io.*;
+
 import cardTools.Util;
 
+import static javacard.framework.ISO7816.*;
 import static tests.client_sign.ClientSignAPDU.*;
 
 /**
- * Example test class for the applet
- * Note: If simulator cannot be started try adding "-noverify" JVM parameter
+ * Test class for the Client-Sign applet.
  *
- * @author xsvenda, Dusan Klinec (ph4r05), Lukas Zaoral
+ * @author Lukas Zaoral
  */
 public class ClientSignTest {
 
-    private static int SW_OK = 0x9000;
-    private static boolean realCard = false;
+    private static final boolean REAL_CARD = false;
+    private static final int TEST_COUNT = 10;
+    private static final int SW_OK = 0x9000;
     private ClientSignAPDU client;
 
     @BeforeClass
     public void setClass() throws Exception {
-        client = new ClientSignAPDU(realCard);
+        client = new ClientSignAPDU(REAL_CARD);
     }
 
     @BeforeMethod
@@ -37,63 +39,63 @@ public class ClientSignTest {
     }
 
     @Test
-    public void wrongCLA() throws Exception {
+    public void clientSignWrongCLA() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 0xFF, 0x00, 0x00, 0x00
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CLA_NOT_SUPPORTED, res.getSW());
+        Assert.assertEquals(SW_CLA_NOT_SUPPORTED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void wrongINS() throws Exception {
+    public void clientSignWrongINS() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, 0xFF, 0x00, 0x00
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INS_NOT_SUPPORTED, res.getSW());
+        Assert.assertEquals(SW_INS_NOT_SUPPORTED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void wrongSetKeysP1() throws Exception {
+    public void clientSignSetKeysWrongP1() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, 0xFF, 0x02
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void wrongSetKeysP2Low() throws Exception {
+    public void clientSignSetKeysWrongP2Low() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, 0x00, 0x0F
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
 
     @Test
-    public void wrongSetKeysP2High() throws Exception {
+    public void clientSignSetKeysWrongP2High() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, 0x00, 0xF0
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void setSingleD() throws Exception {
+    public void clientSignSetSingleD() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
@@ -104,7 +106,7 @@ public class ClientSignTest {
     }
 
     @Test
-    public void setMultiD() throws Exception {
+    public void clientSignSetMultiD() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
@@ -123,20 +125,20 @@ public class ClientSignTest {
     }
 
     @Test
-    public void setSingleN() throws Exception {
-        setSingleD();
+    public void clientSignSetSingleN() throws Exception {
+        clientSignSetSingleD();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_WRONG_LENGTH, res.getSW());
+        Assert.assertEquals(SW_WRONG_LENGTH, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void setMultiN() throws Exception {
-        setSingleD();
+    public void clientSignSetMultiN() throws Exception {
+        clientSignSetSingleD();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
@@ -155,8 +157,8 @@ public class ClientSignTest {
     }
 
     @Test
-    public void setWrongMultiN() throws Exception {
-        setSingleD();
+    public void clientSignSetWrongMultiN() throws Exception {
+        clientSignSetSingleD();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
@@ -170,72 +172,72 @@ public class ClientSignTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_WRONG_LENGTH, res.getSW());
+        Assert.assertEquals(SW_WRONG_LENGTH, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void resetSingleD() throws Exception {
-        setSingleD();
+    public void clientSignReclientSignSetSingleD() throws Exception {
+        clientSignSetSingleD();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void resetMultiD() throws Exception {
-        setMultiD();
+    public void clientSignResetMultiD() throws Exception {
+        clientSignSetMultiD();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void setNBeforeD() throws Exception {
+    public void clientSignSetNBeforeD() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void resetSingleN() throws Exception {
-        setSingleN();
+    public void clientSignResetSingleN() throws Exception {
+        clientSignSetSingleN();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void resetMultiN() throws Exception {
-        setMultiN();
+    public void clientSignResetMultiN() throws Exception {
+        clientSignSetMultiN();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void setDMultiTwice() throws Exception {
+    public void clientSignSetDMultiTwice() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
         ));
@@ -249,7 +251,7 @@ public class ClientSignTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -265,12 +267,12 @@ public class ClientSignTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void setDMultiSwitched() throws Exception {
+    public void clientSignSetDMultiSwitched() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
         ));
@@ -289,8 +291,8 @@ public class ClientSignTest {
     }
 
     @Test
-    public void setNMultiSwitched() throws Exception {
-        setSingleD();
+    public void clientSignSetNMultiSwitched() throws Exception {
+        clientSignSetSingleD();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
         ));
@@ -309,8 +311,8 @@ public class ClientSignTest {
     }
 
     @Test
-    public void setNMultiTwice() throws Exception {
-        setSingleD();
+    public void clientSignSetNMultiTwice() throws Exception {
+        clientSignSetSingleD();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
@@ -325,7 +327,7 @@ public class ClientSignTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -341,13 +343,13 @@ public class ClientSignTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void setNMultiTwiceSwap() throws Exception {
-        setSingleD();
+    public void clientSignSetNMultiTwiceSwap() throws Exception {
+        clientSignSetSingleD();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0xFF}
@@ -362,7 +364,7 @@ public class ClientSignTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -378,12 +380,12 @@ public class ClientSignTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void setKeys() throws Exception {
+    public void clientSignSetKeys() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_PART_0, new byte[]{(byte) 0xF}
         ));
@@ -410,21 +412,21 @@ public class ClientSignTest {
     }
 
     @Test
-    public void setInitialisedKeys() throws Exception {
-        setKeys();
+    public void clientSignSetInitialisedKeys() throws Exception {
+        clientSignSetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, 0x00, 0x00
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void setKeysAfterReset() throws Exception {
-        setKeys();
+    public void clientSignSetKeysAfterReset() throws Exception {
+        clientSignSetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_RESET, 0x00, 0x00
@@ -434,11 +436,11 @@ public class ClientSignTest {
         Assert.assertEquals(SW_OK, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
-        setKeys();
+        clientSignSetKeys();
     }
 
     @Test
-    public void resetCard() throws Exception {
+    public void clientSignResetCard() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_RESET, 0x00, 0x00
         ));
@@ -449,15 +451,15 @@ public class ClientSignTest {
     }
 
     @Test
-    public void resetWrongP1() throws Exception {
-        setKeys();
+    public void clientSignResetWrongP1() throws Exception {
+        clientSignSetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_RESET, 0xFF, 0x00
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -465,20 +467,20 @@ public class ClientSignTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void resetWrongP2() throws Exception {
-        setKeys();
+    public void clientSignResetWrongP2() throws Exception {
+        clientSignSetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_RESET, 0x00, 0xFF
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -486,142 +488,26 @@ public class ClientSignTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void setMessageNoKeys() throws Exception {
+    public void clientSignSetMessageNoKeys() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CONDITIONS_NOT_SATISFIED, res.getSW());
+        Assert.assertEquals(SW_CONDITIONS_NOT_SATISFIED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void setSimpleMessage() throws Exception {
-        setKeys();
+    public void clientSignSetSimpleMessage() throws Exception {
+        clientSignSetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-    }
-
-    @Test
-    public void setMultipartMessage() throws Exception {
-        setKeys();
-
-        ResponseAPDU res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-
-        res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-    }
-
-    @Test
-    public void setMultipartMessageTwice() throws Exception {
-        setKeys();
-
-        ResponseAPDU res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-
-        res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-
-        res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-
-        res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-    }
-
-    @Test
-    public void setMultipartMessageTwiceSwap() throws Exception {
-        setKeys();
-
-        ResponseAPDU res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-
-        res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_COMMAND_NOT_ALLOWED, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-
-        res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-
-        res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-    }
-
-    @Test
-    public void resetMessage() throws Exception {
-        setKeys();
-
-        ResponseAPDU res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-
-        res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
@@ -631,8 +517,124 @@ public class ClientSignTest {
     }
 
     @Test
-    public void resetMultipartMessage() throws Exception {
-        setKeys();
+    public void clientSignSetMultipartMessage() throws Exception {
+        clientSignSetKeys();
+
+        ResponseAPDU res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+
+        res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+    }
+
+    @Test
+    public void clientSignSetMultipartMessageTwice() throws Exception {
+        clientSignSetKeys();
+
+        ResponseAPDU res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+
+        res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+
+        res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+
+        res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+    }
+
+    @Test
+    public void clientSignSetMultipartMessageTwiceSwap() throws Exception {
+        clientSignSetKeys();
+
+        ResponseAPDU res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+
+        res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+
+        res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+
+        res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+    }
+
+    @Test
+    public void clientSignResetMessage() throws Exception {
+        clientSignSetKeys();
+
+        ResponseAPDU res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+
+        res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+    }
+
+    @Test
+    public void clientSignResetMultipartMessage() throws Exception {
+        clientSignSetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
@@ -668,8 +670,8 @@ public class ClientSignTest {
     }
 
     @Test
-    public void setMultipartMessageSwap() throws Exception {
-        setKeys();
+    public void clientSignSetMultipartMessageSwap() throws Exception {
+        clientSignSetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
@@ -689,14 +691,14 @@ public class ClientSignTest {
     }
 
     @Test
-    public void setMessageIncorrectP1() throws Exception {
-        setKeys();
+    public void clientSignSetMessageIncorrectP1() throws Exception {
+        clientSignSetKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x01, P2_PART_0, new byte[]{(byte) 0xFF}
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -704,37 +706,37 @@ public class ClientSignTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void signNoKey() throws Exception {
+    public void clientSignSignNoKey() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SIGNATURE, 0x00, 0x00
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CONDITIONS_NOT_SATISFIED, res.getSW());
+        Assert.assertEquals(SW_CONDITIONS_NOT_SATISFIED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void signNoMessage() throws Exception {
-        setKeys();
+    public void clientSignSignNoMessage() throws Exception {
+        clientSignSetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SIGNATURE, 0x00, 0x00
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CONDITIONS_NOT_SATISFIED, res.getSW());
+        Assert.assertEquals(SW_CONDITIONS_NOT_SATISFIED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void signPartialMessage() throws Exception {
-        setKeys();
+    public void clientSignSignPartialMessage() throws Exception {
+        clientSignSetKeys();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0xFF}
@@ -749,20 +751,20 @@ public class ClientSignTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_CONDITIONS_NOT_SATISFIED, res.getSW());
+        Assert.assertEquals(SW_CONDITIONS_NOT_SATISFIED, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void signBadP1P2() throws Exception {
-        setSimpleMessage();
+    public void clientSignSignBadP1P2() throws Exception {
+        clientSignSetSimpleMessage();
 
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SIGNATURE, 0xFF, 0xFF
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -770,26 +772,48 @@ public class ClientSignTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(ISO7816.SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
     @Test
-    public void signMultipartMessage() throws Exception {
-        client.setKeys();
-
+    public void clientSignSimpleSign() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_0, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_DIVIDED | P2_PART_0,
+                Util.hexStringToByteArray("96CECCABBD3CA81A2F23FA606AC4720D49B48A9C5D841CBE5E2A85C477A44310E8CAEABF238A42F26FE680AA01513D16776856AC23354C8D6312E756C055FB88C5B2C899F34E0F62B6813EC20E8DFE6778ADCE57C7EC0A4FBADD820451B29904F1E01275326D417486760A716B4921AE46C09138CFCA083270C1E45456E014EFB17F911DCE427023FC484189D3F92983B05CF849D05C77E4D9BF053A6618885DA544D0C583370F9F9FAFA962ABBCEDD2DBB81F3322469BC3607FB7B5B9C618E8959B95FE770E85B6D7BA864E8CF5423978AD936392D82BFE1A3970289924D06FEEE8DD9ABEF01B2D45314B9E5FBDADDD28ECAB282EEAB0A277DFB3CF948BFD")
         ));
-
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_OK, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_DIVIDED | P2_PART_1, new byte[]{(byte) 0x0F}
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_D, P2_DIVIDED | P2_PART_1,
+                Util.hexStringToByteArray("3B")
         ));
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
 
+        res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_0,
+                Util.hexStringToByteArray("5618288D09B6D1034168D4534AAD4B7DDB90AEEFF22C47A2BAF25C45AEBE28A34C39C1A8671DD74A302E794FAF0933BD13F56236D91DFA245B328A161B80FC7AEFFA8DDC242A529F1C756D0D437DD2977312A667E64EEA2FDA6660295FAFD67A758A534E76E1BF0B20E7F62A4E34994B398E4448F386CC008FA927582363864CE6577FA3932C79420F152A5C81671EA15977C74CC30D8412E8CF34F1EC5E23797D1394E2292F8E1DECCF7E8472DE96C83776BED2E979D6AD9F78FB0F91C02C604363007810B15C7FB665F1382FB478FF69A0BF008599EC62BBB107F3A8435C9A0994CA45C275C2B117682761EEABC1E6A9A00AAE8BE970FCA364745D5C849F")
+        ));
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+
+        res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_KEYS, P1_SET_N, P2_DIVIDED | P2_PART_1,
+                Util.hexStringToByteArray("DA")
+        ));
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+
+        res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SET_MESSAGE, 0x00, P2_PART_0,
+                Util.hexStringToByteArray("f9822b96c3dcca942368507aeaad9c57267e6dab7ee42dfaf7dbbd2d499a75d623c65479217d89764923987fefd20ecc3eaf1247f09a7c3060091a4ca1251816f3e7c532894a42a1be3bdd0bbd1985f69e6784195cc7f9e45a9be6a4c80dc5db0ca7b08a")
+        ));
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_OK, res.getSW());
         Assert.assertEquals(0, res.getData().length);
@@ -797,23 +821,105 @@ public class ClientSignTest {
         res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT_SIGN, INS_SIGNATURE, 0x00, 0x00, CLIENT_ARR_LENGTH
         ));
-
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_OK, res.getSW());
-        Assert.assertEquals(256, res.getData().length);
-        Assert.assertArrayEquals(Util.hexStringToByteArray("759A9B5DFFE2831356239D9CBFC8BB3CB8DB5DE9EF25A85E60E49EF940BC6844FD8AF286A507550CE9C81F5212E6D7154CE54B4C285C65EAA8C9070FE4AE030B5A73398AC6E62B13F014E81A85865CAA25D94A1CCA9791CEE6616AC73DC1D38E9BC8B9AD38D7DAF9943BCBC1A6C071DFC451A26E9CAF7DCFE91880BF07523394EB1736D223531087AF598498341E728653C0177B4C01EA4D784CE0E3554346194E31F792BAD5814D721AE202B7360D0D7F43FF485C2AEF4CA6F75A3C16E422E93F1497715E75A36CFD2801B5B1140AB89C8FCCE59E6EF5175C03DE39F9C9943141680B67FEF8A721B5C23ECD6FCF88F336D832337A99ECE7482474339056D047"),
+        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertArrayEquals(Util.hexStringToByteArray("01C86B7D2282ACDE771B705A2FEE6A6C621D942130A644CCFBA76D5A84ACCF2C6A98B20A023CDC85F1F1A50BF77C9B77FCC9DA206ED6F8FFFD69DE16C786DB19442FCB75B340C2527DEEF6046CAAED6020893C693CD9BA9FF88CD0E554F6185641F0CD47F406AFC79B59130E1DEC1F2D8E8E0D8F4CC94CFB9EF17156E43F4B2FF9D3666583AD2F8CBD8AEC9D16F546D0874B16DEB86892BE331313F5AC4463D28B73C2B0DCF3AD1937518C1D088AD36F7ED29F30542583FB0E67BC17330F519090733825B26730DA236BFDF11EE01F0FA38FE6F5EBD56AB4E37340552A829560DE32C7947E50B97C67649776DB3C18A26399DD2A985E711885A5D827EE3970B2"),
                 res.getData());
     }
 
     @Test
-    public void simpleSign() throws Exception {
-        client.setKeys();
-        ResponseAPDU res = client.signMessage();
+    public void clientSignStressTest() throws Exception {
+        System.out.println("This test requires the reference 'smpc_rsa' in the tests (../) folder.");
 
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
-        Assert.assertEquals("118D752136C31CD67A7084351A81C50B594FF9D6A0A7BCE187CCD357FC50DA172199248AC37FC8327249301A2B48495BA9653F2D7BBAD3E592C6F5FF288A479C74FA218D1127EA885A3BBDC13B94EBBAE40A52BAFEAE316982E928FF63DFA79E0B368CA2FE26E2519B8E2F83F27448590A3DE86583F3B6911DA52A6135C10912C2754863E61F7813BBD908BA5B3D79984C8F61804CB945ADD731BD243FDDF3B8ACAAF60C956AE72624F54298414C1F368E50401D84CC1C8FBE3A1F302C9E5BBF40C320EF99BDE1602F4926ECAC4C481AAA38881FB7F979D8FC1BFC6D245ADC7037E2B0F23D366DD557E8F3FE90BEDE592078363762EB5FE5971BED74A097C11E",
-                Util.toHex(res.getData()));
+        ProcessBuilder clientGenerate = new ProcessBuilder("./../smpc_rsa", "client", "generate").directory(new File(TEST_PATH));
+        ProcessBuilder serverGenerate = new ProcessBuilder("./../smpc_rsa", "server", "generate").directory(new File(TEST_PATH));
+        ProcessBuilder serverSign = new ProcessBuilder("./../smpc_rsa", "server", "sign").directory(new File(TEST_PATH));
+        ProcessBuilder serverVerify = new ProcessBuilder("./../smpc_rsa", "server", "verify").directory(new File(TEST_PATH));
+
+        client.setDebug(false);
+
+        int nokGenCount = 0;
+        int nokSignCount = 0;
+
+        System.out.println("Runs the applet against reference implementation.");
+        System.out.println("Each test may fail only when the modulus is unusable.");
+
+        for (int i = 1; i <= TEST_COUNT; i++) {
+            System.out.printf("TEST %d: ", i);
+            System.out.flush();
+
+            clientSignResetCard();
+
+            Process clientGenProc = clientGenerate.start();
+            final BufferedReader errReader = new BufferedReader(
+                    new InputStreamReader(new BufferedInputStream(clientGenProc.getErrorStream()))
+            );
+
+            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(
+                    new BufferedOutputStream(clientGenProc.getOutputStream())
+            );
+            outputStreamWriter.write("y\n");
+            outputStreamWriter.flush();
+
+            if (clientGenProc.waitFor() != 0) {
+                String line;
+                while ((line = errReader.readLine()) != null) {
+                    System.out.println(line);
+                }
+
+                Assert.fail("Client keys generation should never fail.");
+            }
+
+            client.setKeys();
+
+            ResponseAPDU responseAPDU = client.signMessage();
+            Assert.assertNotNull(responseAPDU);
+            Assert.assertEquals(SW_OK, responseAPDU.getSW());
+
+            Process serverGenProc = serverGenerate.start();
+            final BufferedReader errReader1 = new BufferedReader(
+                    new InputStreamReader(new BufferedInputStream(serverGenProc.getErrorStream()))
+            );
+
+            OutputStreamWriter outputStreamWriter1 = new OutputStreamWriter(
+                    new BufferedOutputStream(serverGenProc.getOutputStream())
+            );
+            outputStreamWriter1.write("y\n");
+            outputStreamWriter1.flush();
+
+            if (serverGenProc.waitFor() != 0) {
+                String line;
+                while ((line = errReader1.readLine()) != null) {
+                    System.out.println(line);
+                }
+
+                nokGenCount++;
+                continue;
+            }
+
+            Process serverSignProc = serverSign.start();
+            final BufferedReader errReader2 = new BufferedReader(
+                    new InputStreamReader(new BufferedInputStream(serverSignProc.getErrorStream()))
+            );
+
+            if (serverSignProc.waitFor() != 0) {
+                String line;
+                while ((line = errReader2.readLine()) != null) {
+                    System.out.println(line);
+                }
+
+                nokSignCount++;
+                continue;
+            }
+
+            Assert.assertEquals(0, serverVerify.start().waitFor());
+            System.out.println("\u001B[1;32mOK\u001B[0m");
+        }
+
+        System.out.printf("Result: Generate/Sign/All: %d/%d/%d (%.02f %% failed)",
+                nokGenCount, nokSignCount, TEST_COUNT, nokGenCount + nokSignCount * 100d / TEST_COUNT
+        );
     }
 
 }

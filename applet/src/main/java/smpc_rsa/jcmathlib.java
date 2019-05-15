@@ -905,9 +905,7 @@ public class jcmathlib {
         *         {@code other}, false otherwise.
         */
         public boolean shift_lesser(Bignat other, short shift, short start) {
-                short j;
-    
-            j = (short) (other.size + shift - this.size + start);
+            short j = (short) (other.size + shift - this.size + start);
             short this_short, other_short;
             for (short i = start; i < this.size; i++, j++) {
                 this_short = (short) (this.value[i] & digit_mask);
@@ -967,7 +965,7 @@ public class jcmathlib {
         * 
         * @param other
         *            Bignat to compare with
-        * @return true if this number is strictly lesser than {@code other}, false
+        * @return true if this number is strictly less than {@code other}, false
         *         otherwise.
         */
         public boolean lesser(Bignat other) {
@@ -1163,7 +1161,7 @@ public class jcmathlib {
                         // Express the size constraint only here. The check is
                         // essential only in the first round, because
                         // divisor_shift decreases. divisor_shift must be
-                        // strictly lesser than quotient.size, otherwise
+                        // strictly less than quotient.size, otherwise
                         // quotient is not big enough. Note that the initially
                         // computed divisor_shift might be bigger, this
                         // is OK, as long as we don't reach this point.
@@ -1433,6 +1431,7 @@ public class jcmathlib {
          */        
         public void mult_schoolbook(Bignat x, Bignat y) {            	
         	this.zero(); // important to keep, used in exponentiation()
+            this.resize_to_max(true);
             for (short i = (short) (y.size - 1); i >= 0; i--) {
                 this.times_add_shift(x, (short) (y.size - 1 - i), (short) (y.value[i] & digit_mask));
             }
@@ -2231,11 +2230,9 @@ public class jcmathlib {
         public ECPoint_Helper ech = null;
     
         /**
-         * Creates new control structure for requested bit length with all preallocated arrays and engines 
-         * @param maxECLength maximum length of ECPoint objects supported. The provided value is used to 
-         *      initialize properly underlying arrays and engines.  
+         * Creates new control structure for requested bit length with all preallocated arrays and engines
          */
-        public ECConfig(short maxECLength) {
+        public ECConfig() {
             
             // Allocate helper objects for BN and EC
             // Note: due to circular references, we need to split object creation and actual alloaction and initailiztion later (initialize()) 
@@ -2251,13 +2248,7 @@ public class jcmathlib {
             bnh.initialize(MODULO_RSA_ENGINE_MAX_LENGTH_BITS, MULT_RSA_ENGINE_MAX_LENGTH_BITS);
             ech.initialize();
         }
-        
-        public void refreshAfterReset() {
-            if (rm.locker != null) { 
-                rm.locker.refreshAfterReset();
-            }        
-        }
-        
+
         void reset() {
             bnh.FLAG_FAST_MULT_VIA_RSA = false;     
             ech.FLAG_FAST_EC_MULT_VIA_KA = false;   

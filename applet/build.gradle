@@ -46,7 +46,11 @@ dependencies {
 }
 
 test {
-    useTestNG()
+    useTestNG() {
+        includeGroups 'serverBasic', 'serverGenerate', 'serverSetClientKeys', 'serverGetModulus',
+                'serverSetClientSignature', 'serverSign', 'serverGetSignature', 'serverStressTest'
+        useDefaultListeners = true
+    }
     jvmArgs '-noverify'
 }
 
