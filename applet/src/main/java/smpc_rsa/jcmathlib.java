@@ -555,6 +555,8 @@ public class jcmathlib {
         *            Bignat to copy into this object.
         */
         public void copy(Bignat other) {
+            this.resize_to_max(true);
+
             short this_start, other_start, len;
             if (this.size >= other.size) {
                 this_start = (short) (this.size - other.size);

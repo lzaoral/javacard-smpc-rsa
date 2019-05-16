@@ -22,7 +22,7 @@ import static tests.server.ServerAPDU.*;
 public class ServerTest {
 
     private static final boolean REAL_CARD = false;
-    private static final int TEST_COUNT = 10;
+    private static final int TEST_COUNT = 1000;
     private static final int SW_OK = 0x9000;
     private ServerAPDU server;
 
@@ -1512,6 +1512,20 @@ public class ServerTest {
 
             responseAPDU = server.signMessage();
             Assert.assertNotNull(responseAPDU);
+            ret = responseAPDU.getSW();
+            if (ret != SW_OK) {
+                System.out.println("\u001B[1;31mNOK\u001B[0m");
+
+                if (ret == SW_WRONG_DATA) {
+                    System.out.println("Fraudulent or corrupt signature detected!");
+                    nokSignCount++;
+                    continue;
+                }
+
+                System.err.println(ret);
+                Assert.fail();
+            }
+
             Assert.assertEquals(SW_OK, responseAPDU.getSW());
 
             Assert.assertEquals(0, serverVerify.start().waitFor());

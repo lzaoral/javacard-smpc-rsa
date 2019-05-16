@@ -66,27 +66,30 @@ public class RSAServer extends Applet {
     /**
      * Bignats
      */
-    private final Bignat tmpBignatSmall1;
-    private final Bignat tmpBignatSmall2;
-    private final Bignat tmpBignatBig;
-    private final Bignat clientSignature;
-    private final Bignat message;
-    private final Bignat SGN;
+    private final BignatSgn tmpBignatSmall1;
+    private final BignatSgn tmpBignatSmall2;
+    private final BignatSgn tmpBignatBig;
+    private final BignatSgn clientSignature;
+    private final BignatSgn message;
+    private final BignatSgn SGN;
 
     // for comprimality test
-    private final Bignat newA;
-    private final Bignat newB;
+    private final BignatSgn newA;
+    private final BignatSgn newB;
 
-    private final Bignat n1;
-    private final Bignat n2;
-    private final Bignat s1;
-    private final Bignat s2;
+    private final BignatSgn n1;
+    private final BignatSgn n2;
+    private final BignatSgn s1;
+    private final BignatSgn s2;
 
-    private final Bignat oldA;
-    private final Bignat oldB;
-    private final Bignat quotient;
-    private final Bignat tmpSmall;
-    private final Bignat tmpBig;
+    private final BignatSgn oldA;
+    private final BignatSgn oldB;
+    private final BignatSgn quotient;
+    private final BignatSgn tmpSmall;
+    private final BignatSgn tmpBig;
+
+    // for BignatSgn
+    private final Bignat bignatSgnHelper;
 
     /**
      * RSA objects
@@ -99,6 +102,68 @@ public class RSAServer extends Applet {
     private RSAPublicKey serverPublicKey;
 
     private Cipher rsaClient, rsaClientVerify, rsaServer;
+
+    /**
+     * The {@link BignatSgn} class represents Bignat object with support
+     * of negative numbers and subtraction, multiplication and division
+     * extended to support this feature.
+     */
+    public class BignatSgn extends Bignat {
+
+        public static final byte POSITIVE_OR_ZERO = 0x01;
+        public static final byte NEGATIVE = 0x00;
+
+        private byte sign = POSITIVE_OR_ZERO;
+
+        public BignatSgn(short size, byte allocatorType, Bignat_Helper bignatHelper) {
+            super(size, allocatorType, bignatHelper);
+        }
+
+        public void copy(BignatSgn other) {
+            super.copy(other);
+            sign = other.sign;
+        }
+
+        public void clone(BignatSgn other) {
+            super.clone(other);
+            sign = other.sign;
+        }
+
+        public void mult(BignatSgn x, BignatSgn y) {
+            super.mult(x, y);
+            sign = x.sign == y.sign || this.is_zero() ? POSITIVE_OR_ZERO : NEGATIVE;
+        }
+
+        public void remainder_divide(BignatSgn divisor, BignatSgn quotient) {
+            super.remainder_divide(divisor, quotient);
+            sign = divisor.sign == quotient.sign || this.is_zero() ? POSITIVE_OR_ZERO : NEGATIVE;
+        }
+
+        public void subtract(BignatSgn other) {
+            bignatSgnHelper.copy(other);
+
+            if (lesser(other)) {
+                sign = sign == other.sign && other.sign == POSITIVE_OR_ZERO ? NEGATIVE : POSITIVE_OR_ZERO;
+                bignatSgnHelper.subtract(this);
+                copy(bignatSgnHelper);
+                setZeroSign();
+                return;
+            }
+
+            if (sign == other.sign)
+                subtract(bignatSgnHelper);
+            else
+                add(bignatSgnHelper);
+
+            setZeroSign();
+        }
+
+        private void setZeroSign() {
+            if (is_zero())
+                sign = POSITIVE_OR_ZERO;
+        }
+
+    }
 
     /**
      * Creates the instance of this applet. Used by the JavaCard runtime itself.
@@ -124,32 +189,35 @@ public class RSAServer extends Applet {
     public RSAServer(byte[] bArray, short bOffset, byte bLength) {
         Bignat_Helper bignatHelper = new ECConfig().bnh;
 
+        // bignatSgn
+        bignatSgnHelper = new Bignat((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+
         // Allocate Bignats
-        tmpBignatSmall1 = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        tmpBignatSmall2 = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        tmpBignatSmall1 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        tmpBignatSmall2 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
 
         // for overflow
-        tmpBignatBig = new Bignat((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2 + 1), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        SGN = new Bignat((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        clientSignature = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        message = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        tmpBignatBig = new BignatSgn((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2 + 1), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        SGN = new BignatSgn((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        clientSignature = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        message = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
 
         // ugly
-        newA = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        newB = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        newA = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        newB = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
 
         // ugly
-        n1 = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        n2 = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        s1 = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        s2 = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        n1 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        n2 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        s1 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        s2 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
 
         // ugly nazvy
-        oldA = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        oldB = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        quotient = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        tmpSmall = new Bignat(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        tmpBig = new Bignat((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        oldA = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        oldB = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        quotient = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        tmpSmall = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        tmpBig = new BignatSgn((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
 
         sigState = JCSystem.makeTransientByteArray((short) 2, JCSystem.CLEAR_ON_RESET);
 
@@ -425,7 +493,7 @@ public class RSAServer extends Applet {
         rsaClientVerify.doFinal(s1.as_byte_array(), (short) 0, s1.length(), tmpBignatSmall1.as_byte_array(), (short) 0);
 
         if (!tmpBignatSmall1.same_value(message)) {
-            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+            ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         }
 
         rsaServer.doFinal(message.as_byte_array(), (short) 0, message.length(), s2.as_byte_array(), (short) 0);
@@ -534,7 +602,7 @@ public class RSAServer extends Applet {
      * @param b
      * @return
      */
-    public boolean isCoprime(Bignat a, Bignat b) {
+    public boolean isCoprime(BignatSgn a, BignatSgn b) {
 
         //nemazat?
         newA.erase();
@@ -561,16 +629,15 @@ public class RSAServer extends Applet {
      * @param n
      * @param res
      */
-    public void inverse(Bignat a, Bignat n, Bignat res) {
+    public void inverse(BignatSgn a, BignatSgn n, BignatSgn res) {
 
-        this.oldA.erase();
+        oldA.erase();
         oldB.erase();
         newA.erase();
         newB.erase();
         quotient.erase();
         tmpSmall.erase();
         tmpBig.erase();
-        tmpSmall.erase();
 
         oldA.copy(n);
         newB.one();
@@ -579,92 +646,28 @@ public class RSAServer extends Applet {
         if (oldA.lesser(newA))
             newA.subtract(oldA);
 
-        // true +/0; false -
-        boolean tSgn = true;
-        boolean rSgn = true;
-        boolean newTSgn = true;
-        boolean newRSgn = true;
-        boolean quotientSgn = true;
-        boolean bakSgn = true;
-        boolean helperSgn = true;
-
-//    function inverse(a, n)
-//    t := 0;     newt := 1;
-//    r := n;     newr := a;
-//    while newr ≠ 0
-//        quotient := r div newr
-//        (t, newt) := (newt, t - quotient * newt)
-//        (r, newr) := (newr, r - quotient * newr)
-//    if r > 1 then return "a is not invertible"
-//    if t < 0 then t := t + n
-//    return t
-
         while (!newA.is_zero()) {
             tmpBig.copy(oldA);
             tmpBig.remainder_divide(newA, quotient);
-            quotientSgn = rSgn == newRSgn || quotient.is_zero();
 
             tmpSmall.copy(newB);
-            bakSgn = newTSgn;
-
             tmpBig.mult(quotient, newB);
-            helperSgn = quotientSgn == newTSgn || tmpBig.is_zero();
-
             newB.copy(oldB);
-            newTSgn = tSgn;
-
             oldB.clone(tmpSmall);
-            tSgn = bakSgn;
-
-            if (newB.lesser(tmpBig) && newTSgn && helperSgn) {
-                newTSgn = false;
-                tmpBig.subtract(newB);
-                newB.copy(tmpBig);
-            } else if (newB.lesser(tmpBig) && !newTSgn && !helperSgn) {
-                newTSgn = true;
-                tmpBig.subtract(newB);
-                newB.copy(tmpBig);
-            } else if (newTSgn == helperSgn)
-                newB.subtract(tmpBig);
-            else
-                newB.add(tmpBig);
-
-            if (newB.is_zero())
-                newTSgn = true;
+            newB.subtract(tmpBig);
 
             tmpSmall.copy(newA);
-            bakSgn = newRSgn;
-
             tmpBig.mult(quotient, newA);
-            helperSgn = quotientSgn == newRSgn || tmpBig.is_zero();
-
             newA.copy(oldA);
-            newRSgn = rSgn;
-
             oldA.clone(tmpSmall);
-            rSgn = bakSgn;
-
-            if (newA.lesser(tmpBig) && newRSgn && helperSgn) {
-                newRSgn = false;
-                tmpBig.subtract(newA);
-                newA.copy(tmpBig);
-            } else if (newA.lesser(tmpBig) && !newRSgn && !helperSgn) {
-                newRSgn = true;
-                tmpBig.subtract(newA);
-                newA.copy(tmpBig);
-            } else if (newRSgn == helperSgn)
-                newA.subtract(tmpBig);
-            else
-                newA.add(tmpBig);
-
-            if (newA.is_zero())
-                newRSgn = true;
+            newA.subtract(tmpBig);
         }
 
-        if (!oldA.lesser(Bignat_Helper.ONE) && !oldA.same_value(Bignat_Helper.ONE) && rSgn)
+        if (!oldA.lesser(Bignat_Helper.ONE) && !oldA.same_value(Bignat_Helper.ONE)
+                && oldA.sign == BignatSgn.POSITIVE_OR_ZERO)
             ISOException.throwIt(ISO7816.SW_DATA_INVALID);
 
-        if (!tSgn) {
+        if (oldB.sign == BignatSgn.NEGATIVE) {
             tmpSmall.copy(n);
             tmpSmall.subtract(oldB);
             oldB.copy(tmpSmall);
