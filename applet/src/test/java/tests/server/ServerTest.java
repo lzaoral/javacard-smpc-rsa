@@ -1472,7 +1472,7 @@ public class ServerTest {
 
         System.out.println("Runs the applet against reference implementation.");
         System.out.println("Each test may fail only when the modulus is unusable.");
-        // System.out.println("Due to a bug in emulator, the test may very rarely fail with a wrong signature.");
+        System.out.println("Due to a bug in emulator, the test may very rarely fail with a wrong signature.");
 
         for (int i = 1; i <= TEST_COUNT; i++) {
             System.out.printf("TEST %d: ", i);
