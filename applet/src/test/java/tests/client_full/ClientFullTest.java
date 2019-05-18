@@ -1,14 +1,19 @@
 package tests.client_full;
 
-import javax.smartcardio.CommandAPDU;
-import javax.smartcardio.ResponseAPDU;
-
 import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.io.*;
+import javax.smartcardio.CommandAPDU;
+import javax.smartcardio.ResponseAPDU;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 
 import static javacard.framework.ISO7816.*;
 import static tests.client_full.ClientFullAPDU.*;
@@ -22,21 +27,21 @@ public class ClientFullTest {
 
     private static final boolean REAL_CARD = false;
     private static final int TEST_COUNT = 10;
-    private static final int SW_OK = 0x9000;
+    private static final int SW_NO_ERROR = 0x9000;
     private ClientFullAPDU client;
 
-    @BeforeClass
+    @BeforeClass(alwaysRun = true)
     public void setClass() throws Exception {
         client = new ClientFullAPDU(REAL_CARD);
     }
 
-    @BeforeMethod
+    @BeforeMethod(alwaysRun = true)
     public void setUp() throws Exception {
         client.transmit(new CommandAPDU(CLA_RSA_SMPC_CLIENT, INS_RESET, 0x00, 0x00));
         client.setDebug(true);
     }
 
-    @Test
+    @Test(groups = "clientFullBasic")
     public void clientFullWrongCLA() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 0xFF, 0x00, 0x00, 0x00
@@ -47,7 +52,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullBasic")
     public void clientFullWrongINS() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, 0xFF, 0x00, 0x00
@@ -58,77 +63,18 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
-    public void clientFullGenerateKeysWrongP1() throws Exception {
-        ResponseAPDU res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT, INS_GENERATE_KEYS, 0x0F, 0x00
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-    }
-
-    @Test
-    public void clientFullGenerateKeysWrongP2() throws Exception {
-        ResponseAPDU res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT, INS_GENERATE_KEYS, 0x00, 0x0F
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-    }
-
-    @Test
-    public void clientFullGenerateKeys() throws Exception {
-        ResponseAPDU res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT, INS_GENERATE_KEYS, 0x00, 0x00
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-    }
-
-    @Test
-    public void clientFullGenerateKeysTwice() throws Exception {
-        clientFullGenerateKeys();
-
-        ResponseAPDU res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT, INS_GENERATE_KEYS, 0x00, 0x00
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-    }
-
-    @Test
-    public void clientFullGenerateKeysAfterReset() throws Exception {
-        clientFullGenerateKeys();
-
-        ResponseAPDU responseAPDU = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT, INS_RESET, 0x00, 0x00
-        ));
-        Assert.assertEquals(0x9000, responseAPDU.getSW());
-        Assert.assertEquals(0, responseAPDU.getData().length);
-
-        clientFullGenerateKeys();
-    }
-
-    @Test
+    @Test(groups = "clientFullBasic")
     public void clientFullResetCard() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_RESET, 0x00, 0x00
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullBasic")
     public void clientFullResetWrongP1() throws Exception {
         clientFullGenerateKeys();
 
@@ -149,7 +95,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullBasic")
     public void clientFullResetWrongP2() throws Exception {
         clientFullGenerateKeys();
 
@@ -170,7 +116,66 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullGenerate", dependsOnGroups = "clientFullBasic")
+    public void clientFullGenerateKeysWrongP1() throws Exception {
+        ResponseAPDU res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT, INS_GENERATE_KEYS, 0x0F, 0x00
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+    }
+
+    @Test(groups = "clientFullGenerate", dependsOnGroups = "clientFullBasic")
+    public void clientFullGenerateKeysWrongP2() throws Exception {
+        ResponseAPDU res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT, INS_GENERATE_KEYS, 0x00, 0x0F
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_INCORRECT_P1P2, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+    }
+
+    @Test(groups = "clientFullGenerate", dependsOnGroups = "clientFullBasic")
+    public void clientFullGenerateKeys() throws Exception {
+        ResponseAPDU res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT, INS_GENERATE_KEYS, 0x00, 0x00
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+    }
+
+    @Test(groups = "clientFullGenerate", dependsOnGroups = "clientFullBasic")
+    public void clientFullGenerateKeysTwice() throws Exception {
+        clientFullGenerateKeys();
+
+        ResponseAPDU res = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT, INS_GENERATE_KEYS, 0x00, 0x00
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+    }
+
+    @Test(groups = "clientFullGenerate", dependsOnGroups = "clientFullBasic")
+    public void clientFullGenerateKeysAfterReset() throws Exception {
+        clientFullGenerateKeys();
+
+        ResponseAPDU responseAPDU = client.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_CLIENT, INS_RESET, 0x00, 0x00
+        ));
+        Assert.assertEquals(0x9000, responseAPDU.getSW());
+        Assert.assertEquals(0, responseAPDU.getData().length);
+
+        clientFullGenerateKeys();
+    }
+
+    @Test(groups = "clientFullGetKeys", dependsOnGroups = "clientFullGenerate")
     public void clientFullGetKeysWithoutGeneration() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_GET_KEYS, 0x00, 0x00, CLIENT_ARR_LENGTH
@@ -181,7 +186,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullGetKeys", dependsOnGroups = "clientFullGenerate")
     public void clientFullGetKeysWrongP1() throws Exception {
         clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
@@ -193,7 +198,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullGetKeys", dependsOnGroups = "clientFullGenerate")
     public void clientFullGetKeysWrongP2() throws Exception {
         clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
@@ -205,7 +210,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullGetKeys", dependsOnGroups = "clientFullGenerate")
     public void clientFullGetN() throws Exception {
         clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
@@ -213,11 +218,11 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullGetKeys", dependsOnGroups = "clientFullGenerate")
     public void clientFullGetNTwice() throws Exception {
         clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
@@ -225,7 +230,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -237,7 +242,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullGetKeys", dependsOnGroups = "clientFullGenerate")
     public void clientFullGetD() throws Exception {
         clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
@@ -245,11 +250,11 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullGetKeys", dependsOnGroups = "clientFullGenerate")
     public void clientFullGetDTwice() throws Exception {
         clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
@@ -257,7 +262,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -269,7 +274,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullGetKeys", dependsOnGroups = "clientFullGenerate")
     public void clientFullGetKeys() throws Exception {
         clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
@@ -277,7 +282,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -285,11 +290,11 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullGetKeys", dependsOnGroups = "clientFullGenerate")
     public void clientFullGetKeysSwitched() throws Exception {
         clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
@@ -297,7 +302,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -305,11 +310,11 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSetMessage", dependsOnGroups = "clientFullGetKeys")
     public void clientFullSetMessageNoKeys() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SET_MESSAGE, 0x00, P2_PART_0, new byte[]{(byte) 0xFF}
@@ -320,7 +325,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSetMessage", dependsOnGroups = "clientFullGetKeys")
     public void clientFullSetMessageNoSentKeys() throws Exception {
         clientFullGenerateKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
@@ -332,7 +337,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSetMessage", dependsOnGroups = "clientFullGetKeys")
     public void clientFullSetMessageSentD() throws Exception {
         clientFullGetD();
         ResponseAPDU res = client.transmit(new CommandAPDU(
@@ -344,7 +349,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSetMessage", dependsOnGroups = "clientFullGetKeys")
     public void clientFullSetMessageSentN() throws Exception {
         clientFullGetN();
         ResponseAPDU res = client.transmit(new CommandAPDU(
@@ -356,7 +361,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSetMessage", dependsOnGroups = "clientFullGetKeys")
     public void clientFullSetSimpleMessage() throws Exception {
         clientFullGetKeys();
 
@@ -365,11 +370,11 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSetMessage", dependsOnGroups = "clientFullGetKeys")
     public void clientFullSetMultipartMessage() throws Exception {
         clientFullGetKeys();
 
@@ -378,7 +383,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -386,11 +391,11 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSetMessage", dependsOnGroups = "clientFullGetKeys")
     public void clientFullSetMultipartMessageTwice() throws Exception {
         clientFullGetKeys();
 
@@ -399,7 +404,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -415,7 +420,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -423,11 +428,11 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSetMessage", dependsOnGroups = "clientFullGetKeys")
     public void clientFullSetMultipartMessageTwiceSwap() throws Exception {
         clientFullGetKeys();
 
@@ -436,7 +441,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -452,7 +457,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -460,11 +465,11 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSetMessage", dependsOnGroups = "clientFullGetKeys")
     public void clientFullResetMessage() throws Exception {
         clientFullGetKeys();
 
@@ -473,7 +478,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -481,11 +486,11 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSetMessage", dependsOnGroups = "clientFullGetKeys")
     public void clientFullResetMultipartMessage() throws Exception {
         clientFullGetKeys();
 
@@ -494,7 +499,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -502,7 +507,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -510,7 +515,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -518,11 +523,11 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSetMessage", dependsOnGroups = "clientFullGetKeys")
     public void clientFullSetMultipartMessageSwap() throws Exception {
         clientFullGetKeys();
 
@@ -531,7 +536,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -539,11 +544,11 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSetMessage", dependsOnGroups = "clientFullGetKeys")
     public void clientFullSetMessageIncorrectP1() throws Exception {
         clientFullGetKeys();
         ResponseAPDU res = client.transmit(new CommandAPDU(
@@ -563,7 +568,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSignature", dependsOnGroups = "clientFullSetMessage")
     public void clientFullSignNoKey() throws Exception {
         ResponseAPDU res = client.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_CLIENT, INS_SIGNATURE, 0x00, 0x00
@@ -574,7 +579,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSignature", dependsOnGroups = "clientFullSetMessage")
     public void clientFullSignNoMessage() throws Exception {
         clientFullGenerateKeys();
 
@@ -587,7 +592,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSignature", dependsOnGroups = "clientFullSetMessage")
     public void clientFullSignPartialMessage() throws Exception {
         clientFullGetKeys();
 
@@ -596,7 +601,7 @@ public class ClientFullTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
@@ -608,7 +613,7 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSignature", dependsOnGroups = "clientFullSetMessage")
     public void clientFullSignBadP1P2() throws Exception {
         clientFullSetSimpleMessage();
 
@@ -629,37 +634,37 @@ public class ClientFullTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSignature", dependsOnGroups = "clientFullSetMessage")
     public void clientFullSimpleSign() throws Exception {
         ResponseAPDU res = client.generateKeys();
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         client.getKeys();
 
         res = client.signMessage();
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullSignature", dependsOnGroups = "clientFullSetMessage")
     public void clientFullMultiSign() throws Exception {
         ResponseAPDU res = client.generateKeys();
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         client.getKeys();
 
         res = client.signMessage();
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = client.signMessage();
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
-    @Test
+    @Test(groups = "clientFullStressTest", dependsOnGroups = "clientFullSignature")
     public void clientFullStressTest() throws Exception {
         System.out.println("This test requires the reference 'smpc_rsa' in the tests (../) folder.");
 
@@ -683,14 +688,14 @@ public class ClientFullTest {
             clientFullResetCard();
 
             ResponseAPDU responseAPDU = client.generateKeys();
-            Assert.assertEquals(SW_OK, responseAPDU.getSW());
+            Assert.assertEquals(SW_NO_ERROR, responseAPDU.getSW());
             Assert.assertEquals(0, responseAPDU.getData().length);
 
             client.getKeys();
 
             responseAPDU = client.signMessage();
             Assert.assertNotNull(responseAPDU);
-            Assert.assertEquals(SW_OK, responseAPDU.getSW());
+            Assert.assertEquals(SW_NO_ERROR, responseAPDU.getSW());
 
             Process serverGenProc = serverGenerate.start();
             final BufferedReader errReader = new BufferedReader(

@@ -27,7 +27,7 @@ repositories {
 
     // Repository with JCardSim, Globalplatform, etc, ...
     maven {
-        url  "https://dl.bintray.com/ph4r05/jcard"
+        url "https://dl.bintray.com/ph4r05/jcard"
     }
 
     // Local lib repository
@@ -47,8 +47,16 @@ dependencies {
 
 test {
     useTestNG() {
-        includeGroups 'serverBasic', 'serverGenerate', 'serverSetClientKeys', 'serverGetModulus',
-                'serverSetClientSignature', 'serverSign', 'serverGetSignature', 'serverStressTest'
+        includeGroups 'clientSignBasic', 'clientSignSetKeys', 'clientSignSetMessage',
+                'clientSignSignature', 'clientSignStressTest',
+
+                'clientFullBasic', 'clientFullGenerate', 'clientFullGetKeys',
+                'clientFullSetMessage', 'clientFullSignature', 'clientFullStressTest',
+
+                'serverBasic', 'serverGenerate', 'serverSetClientKeys', 'serverGetModulus',
+                'serverSetClientSignature', 'serverSign', 'serverGetSignature',
+                'serverStressTest'
+
         useDefaultListeners = true
     }
     jvmArgs '-noverify'

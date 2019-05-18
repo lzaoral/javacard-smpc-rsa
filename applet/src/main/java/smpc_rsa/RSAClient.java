@@ -18,7 +18,7 @@ import javacardx.crypto.Cipher;
 /**
  * The {@link RSAClient} class represents JavaCard applet used
  * for the purpose of client signing.
- *
+ * <p>
  * It is recommended to use the provided proxy application
  * to send commands to the given card.
  *
@@ -26,7 +26,7 @@ import javacardx.crypto.Cipher;
  */
 public class RSAClient extends Applet {
 
-    private static final byte CLA_RSA_SMPC_CLIENT = (byte) 0x80; // TODO:
+    private static final byte CLA_RSA_SMPC_CLIENT = (byte) 0x80;
 
     /**
      * Instruction codes
@@ -67,9 +67,10 @@ public class RSAClient extends Applet {
 
     /**
      * Creates the instance of this Applet. Used by the JavaCard runtime itself.
+     * <p>
+     * Installation parameters:
      *
-     * Installation parameters
-     * @param bArray bArray
+     * @param bArray  bArray
      * @param bOffset bOffset
      * @param bLength bLength
      */
@@ -79,9 +80,10 @@ public class RSAClient extends Applet {
 
     /**
      * Constructor of {@link RSAClient} class. Allocates and creates all used objects.
+     * <p>
+     * Installation parameters:
      *
-     * Installation parameters
-     * @param bArray bArray
+     * @param bArray  bArray
      * @param bOffset bOffset
      * @param bLength bLength
      * @throws ISOException with {@link CryptoException} reason
@@ -150,7 +152,7 @@ public class RSAClient extends Applet {
     /**
      * Generates the client and server shares of client key and the client partial modulus.
      * If the keys have already been generated, throws an exception. To regenerate them,
-     * use the INS_RESET command first and then try again.
+     * use the {@code INS_RESET} command first and then try again.
      *
      * @param apdu object representing the communication between the card and the world
      * @throws ISOException SW_COMMAND_NOT_ALLOWED if the keys have already been generated
@@ -228,7 +230,7 @@ public class RSAClient extends Applet {
 
     /**
      * Loads the message to the card memory by parts specified in the P2 argument.
-     *
+     * <p>
      * Upon calling, the keys must be generated and the server share if the client exponent
      * and client modulus must be already retrieved.
      *

@@ -5,6 +5,7 @@ import javacard.framework.APDUException;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.Util;
+
 import javacard.security.CryptoException;
 import javacard.security.RSAPrivateKey;
 
@@ -20,8 +21,8 @@ public class Common {
 
     /**
      * P2 parameters of received keys and messages
-     *
-     * Part is only combined with divided data into one byte.
+     * <p>
+     * Part can be combined with divided data into one byte.
      */
     public static final byte P2_PART_0 = 0x00;
     public static final byte P2_PART_1 = 0x01;
@@ -44,16 +45,16 @@ public class Common {
     /**
      * Copies the data content of the APDU Buffer to the target byte array by parts
      * defined in the P2 byte of APDU buffer.
-     *
+     * <p>
      * P2 - specifies part to be set
-     *    - first nibble decides whether the data has been divided, e.g.
-     *         - 0x00 - no
-     *         - 0x1X - yes
-     *    - second nibble is the segment order number, e.g.
-     *         - 0x10 - first part of divided data.
-     *         - 0x11 - second part of divided data
+     * - first nibble decides whether the data has been divided, e.g.
+     *     - 0x00 - no
+     *     - 0x1X - yes
+     * - second nibble is the segment order number, e.g.
+     *     - 0x10 - first part of divided data.
+     *     - 0x11 - second part of divided data
      *
-     * @param apdu object representing the communication between the card and the world
+     * @param apdu   object representing the communication between the card and the world
      * @param target target byte array
      * @throws ISOException SW_INCORRECT_P1P2
      */
@@ -74,17 +75,17 @@ public class Common {
     /**
      * Loads the message to the card memory by parts specified
      * in the P2 argument.
-     *
+     * <p>
      * Upon calling, private key must be initialised, thus exponent and modulus
      * must be already set.
-     *
+     * <p>
      * After the massage is set, any subsequent call zeroes the stored
      * message and starts its loading from the scratch.
      *
-     * @param apdu object representing the communication between the card and the world
-     * @param target target byte array
+     * @param apdu         object representing the communication between the card and the world
+     * @param target       target byte array
      * @param messageState state byte of the message
-     * @param privateKey RSA private key
+     * @param privateKey   RSA private key
      * @throws ISOException SW_CONDITIONS_NOT_SATISFIED if the keys have not yet been fully set
      * @throws ISOException SW_INCORRECT_P1P2
      */
@@ -107,10 +108,10 @@ public class Common {
     /**
      * Signs the message using RSA and sends the signature to the terminal.
      *
-     * @param apdu object representing the communication between the card and the world
-     * @param message byte array with the message
+     * @param apdu         object representing the communication between the card and the world
+     * @param message      byte array with the message
      * @param messageState byte with the load state of the message
-     * @param rsa RSA cipher
+     * @param rsa          RSA cipher
      * @throws ISOException SW_CONDITIONS_NOT_SATISFIED if the keys or message have not yet been fully set
      * @throws ISOException SW_INCORRECT_P1P2
      * @throws ISOException with {@link CryptoException} reason
@@ -153,7 +154,7 @@ public class Common {
      * Updates the state byte of given key or message.
      *
      * @param state byte representing the load state of the given key or message
-     * @param p2 p2 extracted from the apdu
+     * @param p2    p2 extracted from the apdu
      * @return updated state byte
      * @throws ISOException SW_COMMAND_NOT_ALLOWED if the given key or message part is set more than once
      */
@@ -170,12 +171,12 @@ public class Common {
     /**
      * Sends the given array from given offset and then clears
      * its depending on the {@code clearAll} parameter contents.
-     *
+     * <p>
      * The length of sent data depends on the {@code MAX_RESPONSE_APDU_LENGTH} constant.
      *
-     * @param apdu object representing the communication between the card and the world
-     * @param num array to be sent
-     * @param offset offset to send from
+     * @param apdu     object representing the communication between the card and the world
+     * @param num      array to be sent
+     * @param offset   offset to send from
      * @param clearAll decides whether the array will be zeroed
      * @throws ISOException with {@link APDUException} reason
      */
@@ -206,10 +207,10 @@ public class Common {
      * of the same length.
      * Function was taken from the JCMathLib library and adapted.
      *
-     * @author Vasilios Mavroudis and Petr Svenda, adapted by Lukas Zaoral
      * @param a byte array
      * @param b byte array
      * @throws ISOException SW_WRONG_LENGTH if the arrays are of different length
+     * @author Vasilios Mavroudis and Petr Svenda, adapted by Lukas Zaoral
      */
     public static void subtract(byte[] a, byte[] b) {
         if (a.length != b.length)
@@ -218,7 +219,7 @@ public class Common {
         short acc = 0;
         short subtraction_result;
 
-        for (short i = (short) (a.length - 1); i >= 0 ; i--) {
+        for (short i = (short) (a.length - 1); i >= 0; i--) {
             acc = (short) (acc + (short) (b[i] & DIGIT_MASK));
             subtraction_result = (short) ((a[i] & DIGIT_MASK) - (acc & DIGIT_MASK));
 
@@ -234,11 +235,11 @@ public class Common {
      * Comparison of two byte arrays of the same length.
      * Function was taken from the JCMathLib library and adapted.
      *
-     * @author Vasilios Mavroudis and Petr Svenda, adapted by Lukas Zaoral
      * @param a byte array
      * @param b byte array
      * @return true if {@code a} is strictly less than {@code b}, false otherwise.
      * @throws ISOException SW_WRONG_LENGTH if the arrays are of different length
+     * @author Vasilios Mavroudis and Petr Svenda, adapted by Lukas Zaoral
      */
     public static boolean lessThan(byte[] a, byte[] b) {
         if (a.length != b.length)

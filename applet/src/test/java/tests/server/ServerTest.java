@@ -1,17 +1,20 @@
 package tests.server;
 
 import cardTools.Util;
+
 import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import static javacard.framework.ISO7816.*;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 
-import java.io.*;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.OutputStreamWriter;
 
+import static javacard.framework.ISO7816.*;
 import static tests.server.ServerAPDU.*;
 
 /**
@@ -23,7 +26,7 @@ public class ServerTest {
 
     private static final boolean REAL_CARD = false;
     private static final int TEST_COUNT = 1000;
-    private static final int SW_OK = 0x9000;
+    private static final int SW_NO_ERROR = 0x9000;
     private ServerAPDU server;
 
     @BeforeClass(alwaysRun = true)
@@ -37,7 +40,7 @@ public class ServerTest {
         server.setDebug(true);
     }
 
-    @Test(groups= "serverBasic")
+    @Test(groups = "serverBasic")
     public void serverWrongCLA() throws Exception {
         ResponseAPDU res = server.transmit(new CommandAPDU(
                 0xFF, NONE, NONE, NONE
@@ -59,7 +62,18 @@ public class ServerTest {
         Assert.assertEquals(0, res.getData().length);
     }
 
-    @Test(groups = "serverBbasic")
+    @Test(groups = "serverBasic")
+    public void serverResetCard() throws Exception {
+        ResponseAPDU res = server.transmit(new CommandAPDU(
+                CLA_RSA_SMPC_SERVER, INS_RESET, NONE, NONE
+        ));
+
+        Assert.assertNotNull(res);
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
+        Assert.assertEquals(0, res.getData().length);
+    }
+
+    @Test(groups = "serverBasic")
     public void serverResetWrongP1() throws Exception {
         serverGenerateKeys();
 
@@ -130,7 +144,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -144,17 +158,6 @@ public class ServerTest {
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_COMMAND_NOT_ALLOWED, res.getSW());
-        Assert.assertEquals(0, res.getData().length);
-    }
-
-    @Test(groups = "serverGenerate", dependsOnGroups = "serverBasic")
-    public void serverResetCard() throws Exception {
-        ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_RESET, NONE, NONE
-        ));
-
-        Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -224,7 +227,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -237,7 +240,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -245,7 +248,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -269,7 +272,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -277,7 +280,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -289,7 +292,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -334,7 +337,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -342,7 +345,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -350,7 +353,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -388,7 +391,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -404,7 +407,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -425,7 +428,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -433,7 +436,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -445,7 +448,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -453,7 +456,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -466,7 +469,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -482,7 +485,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -503,7 +506,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -519,7 +522,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -540,7 +543,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -548,7 +551,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -556,7 +559,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -582,7 +585,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         serverSetKeys();
@@ -638,7 +641,7 @@ public class ServerTest {
 
         } while (res.getSW() == SW_WRONG_LENGTH);
 
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -646,7 +649,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
@@ -658,7 +661,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -666,7 +669,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
@@ -678,7 +681,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -686,7 +689,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
@@ -698,7 +701,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -706,7 +709,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
@@ -719,7 +722,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -727,7 +730,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
@@ -793,7 +796,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -806,7 +809,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -814,7 +817,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -826,7 +829,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -838,7 +841,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -846,7 +849,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -883,7 +886,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -896,7 +899,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -908,7 +911,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -916,7 +919,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -929,7 +932,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -945,7 +948,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -966,7 +969,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -974,7 +977,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -987,7 +990,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -995,7 +998,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -1008,7 +1011,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1024,7 +1027,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1045,7 +1048,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1061,7 +1064,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1082,7 +1085,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1090,7 +1093,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1098,7 +1101,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1106,7 +1109,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -1163,7 +1166,7 @@ public class ServerTest {
     @Test(groups = "serverSign", dependsOnGroups = "serverSetClientSignature")
     public void serverSignPartialMessage() throws Exception {
         serverSetClientSignatureSingleMsg();
-        
+
         ResponseAPDU res = server.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_SERVER, INS_SIGNATURE, NONE, NONE
         ));
@@ -1181,12 +1184,12 @@ public class ServerTest {
                     CLA_RSA_SMPC_SERVER, INS_RESET, NONE, NONE
             ));
             Assert.assertNotNull(res);
-            Assert.assertEquals(SW_OK, res.getSW());
+            Assert.assertEquals(SW_NO_ERROR, res.getSW());
             Assert.assertEquals(0, res.getData().length);
 
             res = server.transmit(new CommandAPDU(CLA_RSA_SMPC_SERVER, INS_GENERATE_KEYS, NONE, NONE));
             Assert.assertNotNull(res);
-            Assert.assertEquals(SW_OK, res.getSW());
+            Assert.assertEquals(SW_NO_ERROR, res.getSW());
             Assert.assertEquals(0, res.getData().length);
 
             res = server.transmit(new CommandAPDU(
@@ -1194,7 +1197,7 @@ public class ServerTest {
                     Util.hexStringToByteArray("7CBE4EFB4D2FFE8320295EF180E5EE6536CBCD4AB6681F85DE37D3E69B730E8A27D6FBE26493422DCEDE6C8AAF1CC2D52BC3DE27525C096A3F898C66ED37891486FA600AA33829962C1DB3F31169A55745DB6B9007AE70C844EED356DE7EBD5BA908096910F648C3431BD9196F87140B91866C17EF02242E37A12D01A81264B353B223A9FBACEDA04E027BCAAC0B85F65EB1BA748DC526CDC66AF4175B3FA74BC65593A8B5A7A0A258C568BFF36A1A799FAE58820D5BB26B03EBA8CDEB4AE6C290C42EA63FFE30F059D50169683510780657CAF5D7264FA26BBA86F2BE71046803299779E6FC7E7DC4F005660F0572F044B4E95F027F75EC09DB3C05120EF5")
             ));
             Assert.assertNotNull(res);
-            Assert.assertEquals(SW_OK, res.getSW());
+            Assert.assertEquals(SW_NO_ERROR, res.getSW());
             Assert.assertEquals(0, res.getData().length);
 
             res = server.transmit(new CommandAPDU(
@@ -1202,7 +1205,7 @@ public class ServerTest {
                     Util.hexStringToByteArray("30")
             ));
             Assert.assertNotNull(res);
-            Assert.assertEquals(SW_OK, res.getSW());
+            Assert.assertEquals(SW_NO_ERROR, res.getSW());
             Assert.assertEquals(0, res.getData().length);
 
             res = server.transmit(new CommandAPDU(
@@ -1210,7 +1213,7 @@ public class ServerTest {
                     Util.hexStringToByteArray("29B4EB26E2BC20C0941F10FCE3C11367A61F008A253404B6CDF5F655658616E3BD5876B8C2106EDB260D13C49B4AFDE78EEC14D346BB4ACA985C4E2445B6C4309F301C54B242E50A3F0DB537A4D14DF1B1E8F9D89140289F71FC63D876156058B2273457168A76BD92ECEB263E8F789A2025348A0ADA4E173B0552F619992CF2A90BE63492A29F136C7147411CF4FFD34374712A5E6705E6D85596E36E31622EC9ED7671B4EE688C6972C6C0554298F75C0D86451460FFAC5B18CF0AB30B3C783F7526AB230ABEAAB7CC6685470736D3F9F762034A4DBF7620982AF623DCF04CD87D4B93E92472BD1B6F329054951A2E3A7046707E14772E9D689E77660BD9")
             ));
             Assert.assertNotNull(res);
-            Assert.assertEquals(SW_OK, res.getSW());
+            Assert.assertEquals(SW_NO_ERROR, res.getSW());
             Assert.assertEquals(0, res.getData().length);
 
             res = server.transmit(new CommandAPDU(
@@ -1218,19 +1221,19 @@ public class ServerTest {
                     Util.hexStringToByteArray("CB")
             ));
             Assert.assertNotNull(res);
-            Assert.assertEquals(SW_OK, res.getSW());
+            Assert.assertEquals(SW_NO_ERROR, res.getSW());
             Assert.assertEquals(0, res.getData().length);
 
             res = server.transmit(new CommandAPDU(CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_0));
             Assert.assertNotNull(res);
         } while (res.getSW() == SW_WRONG_LENGTH);
 
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_1));
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1238,7 +1241,7 @@ public class ServerTest {
                 Util.hexStringToByteArray("F9822B96C3DCCA942368507AEAAD9C57267E6DAB7EE42DFAF7DBBD2D499A75D623C65479217D89764923987FEFD20ECC3EAF1247F09A7C3060091A4CA1251816F3E7C532894A42A1BE3BDD0BBD1985F69E6784195CC7F9E45A9BE6A4C80DC5DB0CA7B08A")
         ));
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1246,7 +1249,7 @@ public class ServerTest {
                 Util.hexStringToByteArray("C4BCB85B0AC228B275B7514E4AB849F0F6CC042F3EF50923A24BDFA5EA72B1CF7EE4DB5194B8306F36A9C935139F788DCF6DAC5EB1FB8A0F7C33C108E2D71A501FF5BCE6BF3FBFE6225D0C71C65338973AF041F127336D79124779980DD20E9BB3EC47FD3746A7FBB5D7AB2029F6537A2FFD9930BC958FFA04BC8DECB33D621592A43DDBE88DE76F2801547F41EF4F5F04CC00F36E7F7EA022DE8B858805C9A3F3FD9AC9026E7C01071030B0A82DA2CEF12B47484763FDF7C0E64B8203CF4BEBAB1D9AEF880E8A996408C85C5F9E5450B07826A223CA458D348AB814E318030F3BB2B8308C7CC02E83F803BEA4318CD684E614CF963BF130F3D4B19A05105B")
         ));
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1254,7 +1257,7 @@ public class ServerTest {
                 Util.hexStringToByteArray("0D")
         ));
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -1288,7 +1291,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -1301,7 +1304,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1309,7 +1312,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(0, res.getData().length);
     }
 
@@ -1361,7 +1364,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1369,7 +1372,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
@@ -1382,7 +1385,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1390,7 +1393,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
@@ -1403,7 +1406,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1411,7 +1414,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
@@ -1424,7 +1427,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1432,7 +1435,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
@@ -1445,7 +1448,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
@@ -1453,7 +1456,7 @@ public class ServerTest {
         ));
 
         Assert.assertNotNull(res);
-        Assert.assertEquals(SW_OK, res.getSW());
+        Assert.assertEquals(SW_NO_ERROR, res.getSW());
         Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
     }
 
@@ -1491,13 +1494,13 @@ public class ServerTest {
             Assert.assertEquals(0, clientSign.start().waitFor());
 
             ResponseAPDU responseAPDU = server.generateKeys();
-            Assert.assertEquals(SW_OK, responseAPDU.getSW());
+            Assert.assertEquals(SW_NO_ERROR, responseAPDU.getSW());
             Assert.assertEquals(0, responseAPDU.getData().length);
 
             server.setClientKeys();
 
             int ret = server.getPublicModulus().get(0).getSW();
-            if (ret != SW_OK) {
+            if (ret != SW_NO_ERROR) {
                 System.out.println("\u001B[1;31mNOK\u001B[0m");
 
                 if (ret == SW_WRONG_LENGTH) {
@@ -1506,14 +1509,14 @@ public class ServerTest {
                     continue;
                 }
 
-                System.err.println(ret);
+                System.err.printf("SW: %04X", ret);
                 Assert.fail();
             }
 
             responseAPDU = server.signMessage();
             Assert.assertNotNull(responseAPDU);
             ret = responseAPDU.getSW();
-            if (ret != SW_OK) {
+            if (ret != SW_NO_ERROR) {
                 System.out.println("\u001B[1;31mNOK\u001B[0m");
 
                 if (ret == SW_WRONG_DATA) {
@@ -1522,11 +1525,11 @@ public class ServerTest {
                     continue;
                 }
 
-                System.err.println(ret);
+                System.err.printf("SW: %04X", ret);
                 Assert.fail();
             }
 
-            Assert.assertEquals(SW_OK, responseAPDU.getSW());
+            Assert.assertEquals(SW_NO_ERROR, responseAPDU.getSW());
 
             Assert.assertEquals(0, serverVerify.start().waitFor());
             System.out.println("\u001B[1;32mOK\u001B[0m");

@@ -16,7 +16,7 @@ import javacardx.crypto.Cipher;
  * The {@link RSAClientSign} class represents JavaCard applet used
  * solely for the purpose of client signing. The RSA keys must be
  * provided by the user prior to other use.
- *
+ * <p>
  * It is recommended to use the provided proxy application
  * to send commands to the given card.
  *
@@ -24,7 +24,7 @@ import javacardx.crypto.Cipher;
  */
 public class RSAClientSign extends Applet {
 
-    private static final byte CLA_RSA_CLIENT_SIGN = (byte) 0x80;
+    private static final byte CLA_RSA_SMPC_CLIENT_SIGN = (byte) 0x80;
 
     /**
      * Instruction codes
@@ -59,9 +59,10 @@ public class RSAClientSign extends Applet {
 
     /**
      * Creates the instance of this applet. Used by the JavaCard runtime itself.
+     * <p>
+     * Installation parameters:
      *
-     * Installation parameters
-     * @param bArray bArray
+     * @param bArray  bArray
      * @param bOffset bOffset
      * @param bLength bLength
      */
@@ -71,9 +72,10 @@ public class RSAClientSign extends Applet {
 
     /**
      * Constructor of {@link RSAClientSign} class. Allocates and creates all used objects.
+     * <p>
+     * Installation parameters:
      *
-     * Installation parameters
-     * @param bArray bArray
+     * @param bArray  bArray
      * @param bOffset bOffset
      * @param bLength bLength
      * @throws ISOException with {@link CryptoException} reason
@@ -104,7 +106,7 @@ public class RSAClientSign extends Applet {
             return;
 
         byte[] apduBuffer = apdu.getBuffer();
-        if (apduBuffer[ISO7816.OFFSET_CLA] != CLA_RSA_CLIENT_SIGN)
+        if (apduBuffer[ISO7816.OFFSET_CLA] != CLA_RSA_SMPC_CLIENT_SIGN)
             ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
 
         switch (apduBuffer[ISO7816.OFFSET_INS]) {
@@ -131,21 +133,20 @@ public class RSAClientSign extends Applet {
     }
 
     /**
-     * Sets the value of private exponent and modulus by segments
-     * described by the header in the APDU Buffer. Private key must be
-     * set before the public modulus to be consistent with the demo
-     * implementation.
-     *
+     * Sets the value of client private exponent share and partial modulus
+     * by segments described by the header in the APDU Buffer.
+     * Private key must be set before the public modulus.
+     * <p>
      * P1 - specifies the data to be set
-     *        - 0x00 - private exponent
-     *        - 0x01 - modulus
-     *
+     *     - 0x00 - private exponent
+     *     - 0x01 - modulus
+     * <p>
      * Keys can be reset only by calling the INS_RESET instruction,
      * after the keys have been fully set.
      *
      * @param apdu object representing the communication between the card and the world
      * @throws ISOException SW_COMMAND_NOT_ALLOWED if the keys are already set
-     *     or are set in wrong order
+     *                      or are set in wrong order
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void setRSAKeys(APDU apdu) {
@@ -179,15 +180,12 @@ public class RSAClientSign extends Applet {
     }
 
 
-
     /**
      * Sets the keys and updates the information about their state
      *
      * @param apdu object representing the communication between the card and the world
-     * @throws ISOException SW_COMMAND_NOT_ALLOWED if the given key part is set more than once
      * @throws ISOException SW_WRONG_LENGTH if the partial modulus n1 is shorter
-     * @throws ISOException SW_INCORRECT_P1P2
-     * @throws ISOException with CryptoException reason
+     * @throws ISOException with {@link CryptoException} reason
      */
     private void updateKey(APDU apdu) {
         byte[] apduBuffer = apdu.getBuffer();
