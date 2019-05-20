@@ -24,8 +24,10 @@ import static tests.server.ServerAPDU.*;
  */
 public class ServerTest {
 
+    // TODo: missing smpc_rsa executable
+
     private static final boolean REAL_CARD = false;
-    private static final int TEST_COUNT = 1000;
+    private static final int TEST_COUNT = 10;
     private static final int SW_NO_ERROR = 0x9000;
     private ServerAPDU server;
 
@@ -1521,6 +1523,10 @@ public class ServerTest {
 
                 if (ret == SW_WRONG_DATA) {
                     System.out.println("Fraudulent or corrupt signature detected!");
+
+                    if (REAL_CARD)
+                        Assert.fail();
+
                     nokSignCount++;
                     continue;
                 }

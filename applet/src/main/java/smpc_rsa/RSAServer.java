@@ -14,6 +14,8 @@ import smpc_rsa.jcmathlib.Bignat;
 import smpc_rsa.jcmathlib.Bignat_Helper;
 import smpc_rsa.jcmathlib.ECConfig;
 
+// TODO: usage analysis
+
 /**
  * The {@link RSAServer} class represents JavaCard applet used
  * for the purpose of server signing.
@@ -124,11 +126,6 @@ public class RSAServer extends Applet {
 
         public void copy(BignatSgn other) {
             super.copy(other);
-            sign = other.sign;
-        }
-
-        public void clone(BignatSgn other) {
-            super.clone(other);
             sign = other.sign;
         }
 
@@ -252,7 +249,7 @@ public class RSAServer extends Applet {
     /**
      * The `main` method of this applet
      *
-     * @param apdu object representing the communication between the card and the world
+     * @param apdu object representing the communication between the card and the terminal
      * @throws ISOException SW_CLA_NOT_SUPPORTED
      * @throws ISOException SW_INS_NOT_SUPPORTED
      */
@@ -304,7 +301,7 @@ public class RSAServer extends Applet {
      * If the keys have already been generated, throws an exception. To regenerate them,
      * use the INS_RESET command first and then try again.
      *
-     * @param apdu object representing the communication between the card and the world
+     * @param apdu object representing the communication between the card and the terminal
      * @throws ISOException SW_COMMAND_NOT_ALLOWED if the keys have already been generated
      * @throws ISOException SW_INCORRECT_P1P2
      * @throws ISOException with {@link CryptoException} reason
@@ -329,20 +326,19 @@ public class RSAServer extends Applet {
     /**
      * Sets the value of server private exponent share and clients partial
      * modulus by segments described by the header in the APDU Buffer.
-     * Server must be already generated and the private key must be
-     * set before the public modulus.
+     * Server keys must be already generated. The server private exponent
+     * share must be set before the public modulus.
      * <p>
      * P1 - specifies the data to be set
-     * - 0x00 - private exponent
-     * - 0x01 - modulus
+     *    - 0x00 - private exponent
+     *    - 0x01 - modulus
      * <p>
-     * Keys can be reset only by calling the INS_RESET instruction,
+     * Keys can be reset only by calling the INS_RESET instruction
      * after the keys have been fully set.
      *
-     * @param apdu object representing the communication between the card and the world
+     * @param apdu object representing the communication between the card and the terminal
      * @throws ISOException SW_CONDITIONS_NOT_SATISFIED if the server have not been generated
-     * @throws ISOException SW_COMMAND_NOT_ALLOWED if the keys are already set
-     *                      or are set in wrong order
+     * @throws ISOException SW_COMMAND_NOT_ALLOWED if the server share of client keys is already set
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void setClientKeys(APDU apdu) {
@@ -373,7 +369,11 @@ public class RSAServer extends Applet {
     }
 
     /**
-     * @param apdu
+     * Sets the server share of client keys and updates the information about their state.
+     *
+     * @param apdu object representing the communication between the card and the terminal
+     * @throws ISOException SW_WRONG_LENGTH if the partial modulus n1 is shorter
+     * @throws ISOException with {@link CryptoException} reason
      */
     private void updateKey(APDU apdu) {
         byte[] apduBuffer = apdu.getBuffer();
@@ -385,13 +385,13 @@ public class RSAServer extends Applet {
             return;
 
         try {
-
             if (p1 == P1_SET_D1_SERVER) {
                 clientPrivateKey.setExponent(tmpBignatSmall1.as_byte_array(), (short) 0, tmpBignatSmall1.length());
                 tmpBignatSmall1.erase();
             } else {
                 byte[] modulus = tmpBignatSmall2.as_byte_array();
 
+                // 2048-bit partial modulus check
                 if ((modulus[0] & Common.HIGHEST_BIT_MASK) != Common.HIGHEST_BIT_MASK)
                     ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
 
@@ -412,7 +412,18 @@ public class RSAServer extends Applet {
     }
 
     /**
-     * @param apdu
+     * Sends the public modulus depending on the P1 argument. The public modulus has to be of
+     * correct length. The server keys must be generated and the server share of client keys
+     * must be set first. After first run, the public modulus is available in the {@code publicModulus}
+     * byte array. The public modulus must be retrieved at least once before signing.
+     * After that, it can be retrieved an unlimited number of times.
+     *
+     * @param apdu object representing the communication between the card and the terminal
+     * @throws ISOException SW_CONDITIONS_NOT_SATISFIED the keys are not set or generated
+     * @throws ISOException SW_DATA_INVALID the partial moduli are not coprime
+     * @throws ISOException SW_WRONG_LENGTH if the public modulus is not {@code PARTIAL_MODULUS_BYTE_LENGTH * 8 * 2}
+     *                      bits long
+     * @throws ISOException SW_INCORRECT_P1P2
      */
     private void getPublicModulus(APDU apdu) {
         if (!clientPrivateKey.isInitialized() || !clientPublicKey.isInitialized())
@@ -436,7 +447,7 @@ public class RSAServer extends Applet {
 
             tmpBignatBig.mult(tmpBignatSmall2, tmpBignatSmall1);
 
-            // 4096-bit modulus check
+            // 4096-bit public modulus check
             if (tmpBignatBig.as_byte_array()[0] != 0x00 ||
                     (tmpBignatBig.as_byte_array()[1] & Common.HIGHEST_BIT_MASK) != Common.HIGHEST_BIT_MASK)
                 ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
@@ -461,9 +472,22 @@ public class RSAServer extends Applet {
     }
 
     /**
-     * @param apdu
+     * Sets the value of message and client signature share by segments
+     * described by the header in the APDU Buffer. Server keys must be already generated.
+     * Server share of client key must be already set and the public modulus must be at least once
+     * retrieved.
+     * <p>
+     * P1 - specifies the data to be set
+     *    - 0x00 - message
+     *    - 0x01 - client signature share
+     * <p>
+     * If the data are fully set, any subsequent calls start the loading from scratch.
+     *
+     * @param apdu object representing the communication between the card and the world
+     * @throws ISOException SW_CONDITIONS_NOT_SATISFIED if the server have not been generated
+     * @throws ISOException SW_COMMAND_NOT_ALLOWED if the message or signature are already set
+     * @throws ISOException SW_INCORRECT_P1P2
      */
-    // reset used Bignums
     private void setClientSignature(APDU apdu) {
         if (publicModulusState != Common.DATA_TRANSFERRED)
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
@@ -501,7 +525,16 @@ public class RSAServer extends Applet {
     }
 
     /**
-     * @param apdu
+     * Computes the final signature using RSA and saves it to the {@code SGN} Bignat.
+     * Fails if the client signature share is fraudulent od corrupt.
+     * All keys, message and client signature share must be fully set prior to signing.
+     *
+     * @param apdu object representing the communication between the card and the terminal
+     * @throws ISOException SW_CONDITIONS_NOT_SATISFIED if the keys, message or client signature share
+     *                      have not yet been fully set
+     * @throws ISOException SW_WRONG_DATA if the client signature share is fraudulent od corrupt
+     * @throws ISOException SW_INCORRECT_P1P2
+     * @throws ISOException with {@link CryptoException} reason
      */
     private void signRSAMessage(APDU apdu) {
         if (sigState[P1_SET_MESSAGE] != Common.DATA_TRANSFERRED || sigState[P1_SET_SIGNATURE] != Common.DATA_TRANSFERRED)
@@ -512,21 +545,19 @@ public class RSAServer extends Applet {
         clientPrivateKey.getModulus(n1.as_byte_array(), (short) 0);
         serverPrivateKey.getModulus(n2.as_byte_array(), (short) 0);
 
-        rsaClient.doFinal(message.as_byte_array(), (short) 0, message.length(), tmpBignatSmall1.as_byte_array(), (short) 0);
-        s1.mod_mult(clientSignature, tmpBignatSmall1, n1);
-        rsaClientVerify.doFinal(s1.as_byte_array(), (short) 0, s1.length(), tmpBignatSmall1.as_byte_array(), (short) 0);
+        try {
+            rsaClient.doFinal(message.as_byte_array(), (short) 0, message.length(), tmpBignatSmall1.as_byte_array(), (short) 0);
+            s1.mod_mult(clientSignature, tmpBignatSmall1, n1);
+            rsaClientVerify.doFinal(s1.as_byte_array(), (short) 0, s1.length(), tmpBignatSmall1.as_byte_array(), (short) 0);
 
-        if (!tmpBignatSmall1.same_value(message)) {
-            ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+            if (!tmpBignatSmall1.same_value(message)) {
+                ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+            }
+
+            rsaServer.doFinal(message.as_byte_array(), (short) 0, message.length(), s2.as_byte_array(), (short) 0);
+        } catch (CryptoException e) {
+            ISOException.throwIt(e.getReason());
         }
-
-        rsaServer.doFinal(message.as_byte_array(), (short) 0, message.length(), s2.as_byte_array(), (short) 0);
-        inverse(n1, n2, tmpSmall);
-
-        s2.mod_sub(s1, n2);
-        tmpSmall.mod_mult(s2, tmpSmall, n2);
-        SGN.mult(tmpSmall, n1);
-        SGN.add(s1);
 
         /*
         // Compute the full signature
@@ -535,6 +566,11 @@ public class RSAServer extends Applet {
         s *= n1;
         s += s1;
         */
+        s2.mod_sub(s1, n2);
+        inverse(n1, n2, tmpSmall);
+        tmpSmall.mod_mult(s2, tmpSmall, n2);
+        SGN.mult(tmpSmall, n1);
+        SGN.add(s1);
 
         tmpBignatSmall1.resize_to_max(true);
         tmpBignatSmall2.resize_to_max(true);
@@ -554,7 +590,12 @@ public class RSAServer extends Applet {
 
 
     /**
-     * @param apdu
+     * Sends the final signature depending on the P1 argument.
+     * The keys signature must be computed first and can be retrieved any number of times.
+     *
+     * @param apdu object representing the communication between the card and the terminal
+     * @throws ISOException SW_CONDITIONS_NOT_SATISFIED the final signature is has not been computed yet
+     * @throws ISOException SW_INCORRECT_P1P2
      */
     private void getFinalSignature(APDU apdu) {
         if (SGN.is_zero())
@@ -581,7 +622,7 @@ public class RSAServer extends Applet {
     /**
      * Zeroes out all arrays and resets the applet to the initial state.
      *
-     * @param apdu object representing the communication between the card and the world
+     * @param apdu object representing the communication between the card and the terminal
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void reset(APDU apdu) {
@@ -615,17 +656,18 @@ public class RSAServer extends Applet {
 
         Common.clearByteArray(keyState);
         Common.clearByteArray(sigState);
+        Common.clearByteArray(publicModulus);
     }
 
     /**
-     * TODO:
+     * Decides whether the numbers {@code a} and {@code b} are coprime.
+     * Based on pseudo-code from Wikipedia: https://en.wikipedia.org/wiki/Euclidean_algorithm
      *
-     * @param a
-     * @param b
-     * @return
+     * @param a number a
+     * @param b number b
+     * @return true if {@code a} and {@code b} are coprime, false otherwise.
      */
     public boolean isCoprime(BignatSgn a, BignatSgn b) {
-
         newA.copy(a);
         newB.copy(b);
 
@@ -640,14 +682,16 @@ public class RSAServer extends Applet {
     }
 
     /**
-     * TODO:
+     * Computes modular inverse of {@code a} modulo {@code n} and saves
+     * the result into {@code res}.
+     * Based on pseudo-code from Wikipedia: https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
      *
-     * @param a
-     * @param n
-     * @param res
+     * @param a number to inverted
+     * @param n modulus
+     * @param res result
+     * @throws ISOException SW_DATA_INVALID if {@code a} is not invertible
      */
     public void inverse(BignatSgn a, BignatSgn n, BignatSgn res) {
-
         oldA.copy(n);
         oldB.erase();
         newB.one();
@@ -663,13 +707,13 @@ public class RSAServer extends Applet {
             tmpSmall.copy(newB);
             tmpBig.mult(quotient, newB);
             newB.copy(oldB);
-            oldB.clone(tmpSmall);
+            oldB.copy(tmpSmall);
             newB.subtract(tmpBig);
 
             tmpSmall.copy(newA);
             tmpBig.mult(quotient, newA);
             newA.copy(oldA);
-            oldA.clone(tmpSmall);
+            oldA.copy(tmpSmall);
             newA.subtract(tmpBig);
         }
 

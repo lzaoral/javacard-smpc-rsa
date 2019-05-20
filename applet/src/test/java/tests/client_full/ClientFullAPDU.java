@@ -64,7 +64,6 @@ public class ClientFullAPDU {
     private static final CardManager cardMgr = new CardManager(APPLET_AID_BYTE);
 
     /**
-     *
      * @param realCard
      * @throws Exception
      */
@@ -89,8 +88,6 @@ public class ClientFullAPDU {
     }
 
     /**
-     *
-     *
      * @param cmds
      * @param num
      * @param ins
@@ -111,7 +108,6 @@ public class ClientFullAPDU {
     }
 
     /**
-     *
      * @param cmd
      * @return
      * @throws Exception
@@ -121,7 +117,6 @@ public class ClientFullAPDU {
     }
 
     /**
-     *
      * @return
      * @throws CardException
      */
@@ -136,7 +131,6 @@ public class ClientFullAPDU {
     }
 
     /**
-     *
      * @throws Exception
      */
     public void getKeys() throws Exception {
@@ -165,7 +159,6 @@ public class ClientFullAPDU {
     }
 
     /**
-     *
      * @return
      * @throws Exception
      */
@@ -209,7 +202,6 @@ public class ClientFullAPDU {
     }
 
     /**
-     *
      * @param res
      * @param operation
      * @throws CardException

@@ -2,6 +2,7 @@ package smpc_rsa;
 
 import javacard.framework.APDU;
 import javacard.framework.APDUException;
+import javacard.framework.CardRuntimeException;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.Util;
@@ -54,7 +55,7 @@ public class Common {
      *     - 0x10 - first part of divided data.
      *     - 0x11 - second part of divided data
      *
-     * @param apdu   object representing the communication between the card and the world
+     * @param apdu   object representing the communication between the card and the terminal
      * @param target target byte array
      * @throws ISOException SW_INCORRECT_P1P2
      */
@@ -82,7 +83,7 @@ public class Common {
      * After the massage is set, any subsequent call zeroes the stored
      * message and starts its loading from the scratch.
      *
-     * @param apdu         object representing the communication between the card and the world
+     * @param apdu         object representing the communication between the card and the terminal
      * @param target       target byte array
      * @param messageState state byte of the message
      * @param privateKey   RSA private key
@@ -108,7 +109,7 @@ public class Common {
     /**
      * Signs the message using RSA and sends the signature to the terminal.
      *
-     * @param apdu         object representing the communication between the card and the world
+     * @param apdu         object representing the communication between the card and the terminal
      * @param message      byte array with the message
      * @param messageState byte with the load state of the message
      * @param rsa          RSA cipher
@@ -125,16 +126,10 @@ public class Common {
         checkZeroP1P2(apduBuffer);
 
         try {
-            rsa.doFinal(message, (short) 0, (short) message.length, apduBuffer, (short) 0);
-        } catch (CryptoException e) {
-            ISOException.throwIt(e.getReason());
-        }
-
-        clearByteArray(message);
-
-        try {
-            apdu.setOutgoingAndSend((short) 0, (short) message.length);
-        } catch (APDUException e) {
+            short bytes = rsa.doFinal(message, (short) 0, (short) message.length, apduBuffer, (short) 0);
+            clearByteArray(message);
+            apdu.setOutgoingAndSend((short) 0, bytes);
+        } catch (CardRuntimeException e) {
             ISOException.throwIt(e.getReason());
         }
     }
@@ -174,7 +169,7 @@ public class Common {
      * <p>
      * The length of sent data depends on the {@code MAX_RESPONSE_APDU_LENGTH} constant.
      *
-     * @param apdu     object representing the communication between the card and the world
+     * @param apdu     object representing the communication between the card and the terminal
      * @param num      array to be sent
      * @param offset   offset to send from
      * @param clearAll decides whether the array will be zeroed

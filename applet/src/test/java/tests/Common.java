@@ -8,4 +8,6 @@ public class Common {
     public static final String MESSAGE_FILE = "message.txt";
     public static final String CLIENT_SIG_SHARE_FILE = "client.sig";
     public static final String FINAL_SIG_FILE = "final.sig";
+
+    private static final int SW_NO_ERROR = 0x9000;
 }

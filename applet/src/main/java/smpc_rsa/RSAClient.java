@@ -187,9 +187,9 @@ public class RSAClient extends Applet {
 
     /**
      * Sends a client modulus or server share of the client private exponent depending
-     * on the P1 argument. The keys must generated first and can be retrieved only once.
+     * on the P1 argument. The keys must be generated first and can be retrieved only once.
      *
-     * @param apdu object representing the communication between the card and the world
+     * @param apdu object representing the communication between the card and the terminal
      * @throws ISOException SW_CONDITIONS_NOT_SATISFIED the keys have not been initialised
      * @throws ISOException SW_COMMAND_NOT_ALLOWED if the given key part has already been retrieved
      * @throws ISOException SW_INCORRECT_P1P2

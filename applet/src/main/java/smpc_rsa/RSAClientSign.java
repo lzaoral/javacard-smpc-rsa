@@ -97,7 +97,7 @@ public class RSAClientSign extends Applet {
     /**
      * The `main` method of this applet
      *
-     * @param apdu object representing the communication between the card and the world
+     * @param apdu object representing the communication between the card and the terminal
      * @throws ISOException SW_CLA_NOT_SUPPORTED
      * @throws ISOException SW_INS_NOT_SUPPORTED
      */
@@ -144,7 +144,7 @@ public class RSAClientSign extends Applet {
      * Keys can be reset only by calling the INS_RESET instruction,
      * after the keys have been fully set.
      *
-     * @param apdu object representing the communication between the card and the world
+     * @param apdu object representing the communication between the card and the terminal
      * @throws ISOException SW_COMMAND_NOT_ALLOWED if the keys are already set
      *                      or are set in wrong order
      * @throws ISOException SW_INCORRECT_P1P2
@@ -181,9 +181,9 @@ public class RSAClientSign extends Applet {
 
 
     /**
-     * Sets the keys and updates the information about their state
+     * Sets the client keys and updates the information about their state.
      *
-     * @param apdu object representing the communication between the card and the world
+     * @param apdu object representing the communication between the card and the terminal
      * @throws ISOException SW_WRONG_LENGTH if the partial modulus n1 is shorter
      * @throws ISOException with {@link CryptoException} reason
      */
@@ -218,7 +218,7 @@ public class RSAClientSign extends Applet {
     /**
      * Zeroes out all arrays and resets the applet to the initial state.
      *
-     * @param apdu object representing the communication between the card and the world
+     * @param apdu object representing the communication between the card and the terminal
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void reset(APDU apdu) {
