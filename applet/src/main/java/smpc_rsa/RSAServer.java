@@ -1,6 +1,11 @@
 package smpc_rsa;
 
-import javacard.framework.*;
+import javacard.framework.APDU;
+import javacard.framework.Applet;
+import javacard.framework.ISO7816;
+import javacard.framework.ISOException;
+import javacard.framework.JCSystem;
+import javacard.framework.Util;
 
 import javacard.security.CryptoException;
 import javacard.security.KeyBuilder;
@@ -13,8 +18,6 @@ import javacardx.crypto.Cipher;
 import smpc_rsa.jcmathlib.Bignat;
 import smpc_rsa.jcmathlib.Bignat_Helper;
 import smpc_rsa.jcmathlib.ECConfig;
-
-// TODO: usage analysis
 
 /**
  * The {@link RSAServer} class represents JavaCard applet used
@@ -68,26 +71,24 @@ public class RSAServer extends Applet {
     /**
      * Bignats
      */
-    private final BignatSgn tmpBignatSmall1;
-    private final BignatSgn tmpBignatSmall2;
-    private final BignatSgn tmpBignatBig;
     private final BignatSgn clientSignature;
     private final BignatSgn message;
-    private final BignatSgn SGN;
-
-    // for coprimality test and modular inversion
-    private final BignatSgn newA;
-    private final BignatSgn newB;
+    private final BignatSgn s;
 
     private final BignatSgn n1;
     private final BignatSgn n2;
     private final BignatSgn s1;
-    private final BignatSgn s2;
 
+    // for coprimality test and modular inversion
+    private final BignatSgn newA;
+    private final BignatSgn newB;
     private final BignatSgn oldA;
     private final BignatSgn oldB;
     private final BignatSgn quotient;
-    private final BignatSgn tmpSmall;
+
+    // helper bignats
+    private final BignatSgn tmpSmall1;
+    private final BignatSgn tmpSmall2;
     private final BignatSgn tmpBig;
 
     // for BignatSgn
@@ -196,33 +197,26 @@ public class RSAServer extends Applet {
         // bignatSgn
         bignatSgnHelper = new Bignat((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
 
-        // Allocate Bignats
-        tmpBignatSmall1 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        tmpBignatSmall2 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        // helper bignats
+        tmpSmall1 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        tmpSmall2 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        // longer for possible overflow in modulus multiplication
+        tmpBig = new BignatSgn((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2 + 1), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
 
-        // longer for possible overflow
-        tmpBignatBig = new BignatSgn((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2 + 1), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-
-        SGN = new BignatSgn((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        clientSignature = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        // signing
         message = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-
-        // ugly
-        newA = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        newB = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-
-        // ugly
+        clientSignature = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        s = new BignatSgn((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        s1 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
         n1 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
         n2 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        s1 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        s2 = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
 
-        // ugly nazvy
+        // coprimality test + inversion
+        newB = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
+        newA = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
         oldA = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
         oldB = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
         quotient = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        tmpSmall = new BignatSgn(Common.PARTIAL_MODULUS_BYTE_LENGTH, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
-        tmpBig = new BignatSgn((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);
 
         sigState = JCSystem.makeTransientByteArray((short) 2, JCSystem.CLEAR_ON_RESET);
 
@@ -351,7 +345,7 @@ public class RSAServer extends Applet {
                 if (keyState[P1_SET_D1_SERVER] == Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-                Common.setNumber(apdu, tmpBignatSmall1.as_byte_array());
+                Common.setNumber(apdu, tmpSmall1.as_byte_array());
                 updateKey(apdu);
                 break;
 
@@ -359,7 +353,7 @@ public class RSAServer extends Applet {
                 if (keyState[P1_SET_N1] == Common.DATA_TRANSFERRED)
                     ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
 
-                Common.setNumber(apdu, tmpBignatSmall2.as_byte_array());
+                Common.setNumber(apdu, tmpSmall2.as_byte_array());
                 updateKey(apdu);
                 break;
 
@@ -386,10 +380,10 @@ public class RSAServer extends Applet {
 
         try {
             if (p1 == P1_SET_D1_SERVER) {
-                clientPrivateKey.setExponent(tmpBignatSmall1.as_byte_array(), (short) 0, tmpBignatSmall1.length());
-                tmpBignatSmall1.erase();
+                clientPrivateKey.setExponent(tmpSmall1.as_byte_array(), (short) 0, tmpSmall1.length());
+                tmpSmall1.erase();
             } else {
-                byte[] modulus = tmpBignatSmall2.as_byte_array();
+                byte[] modulus = tmpSmall2.as_byte_array();
 
                 // 2048-bit partial modulus check
                 if ((modulus[0] & Common.HIGHEST_BIT_MASK) != Common.HIGHEST_BIT_MASK)
@@ -398,7 +392,7 @@ public class RSAServer extends Applet {
                 clientPrivateKey.setModulus(modulus, (short) 0, (short) modulus.length);
                 clientPublicKey.setModulus(modulus, (short) 0, (short) modulus.length);
 
-                tmpBignatSmall2.erase();
+                tmpSmall2.erase();
             }
 
             if (clientPrivateKey.isInitialized())
@@ -437,27 +431,28 @@ public class RSAServer extends Applet {
         if (p2 != Common.P2_PART_0 && p2 != Common.P2_PART_1)
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 
-        // tmpBignatBig is empty iff this method is invoked for the first time
+        // tmpBig is empty iff this method is invoked for the first time
         if (publicModulusState == 0x00) {
-            clientPrivateKey.getModulus(tmpBignatSmall1.as_byte_array(), (short) 0);
-            serverPrivateKey.getModulus(tmpBignatSmall2.as_byte_array(), (short) 0);
+            clientPrivateKey.getModulus(tmpSmall1.as_byte_array(), (short) 0);
+            serverPrivateKey.getModulus(tmpSmall2.as_byte_array(), (short) 0);
 
-            if (!isCoprime(tmpBignatSmall1, tmpBignatSmall2))
+            if (!isCoprime(tmpSmall1, tmpSmall2))
                 ISOException.throwIt(ISO7816.SW_DATA_INVALID);
 
-            tmpBignatBig.mult(tmpBignatSmall2, tmpBignatSmall1);
+            tmpBig.mult(tmpSmall1, tmpSmall2);
+            byte[] tmpBigArray = tmpBig.as_byte_array();
 
             // 4096-bit public modulus check
-            if (tmpBignatBig.as_byte_array()[0] != 0x00 ||
-                    (tmpBignatBig.as_byte_array()[1] & Common.HIGHEST_BIT_MASK) != Common.HIGHEST_BIT_MASK)
+            if (tmpBigArray[0] != 0x00 ||
+                    (tmpBigArray[1] & Common.HIGHEST_BIT_MASK) != Common.HIGHEST_BIT_MASK)
                 ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
 
-            Util.arrayCopyNonAtomic(tmpBignatBig.as_byte_array(), (short) 1, publicModulus, (short) 0,
+            Util.arrayCopyNonAtomic(tmpBigArray, (short) 1, publicModulus, (short) 0,
                     (short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2));
 
-            tmpBignatSmall1.erase();
-            tmpBignatSmall2.erase();
-            tmpBignatBig.erase();
+            tmpSmall1.erase();
+            tmpSmall2.erase();
+            tmpBig.erase();
         }
 
         // each part has to be sent at least once, thus publicModulusState will be equal the DATA_TRANSFERRED
@@ -467,7 +462,7 @@ public class RSAServer extends Applet {
             return;
         }
 
-        Common.sendNum(apdu, tmpBignatBig.as_byte_array(), Common.PARTIAL_MODULUS_BYTE_LENGTH, false);
+        Common.sendNum(apdu, publicModulus, Common.PARTIAL_MODULUS_BYTE_LENGTH, false);
         publicModulusState |= 0x02;
     }
 
@@ -525,7 +520,7 @@ public class RSAServer extends Applet {
     }
 
     /**
-     * Computes the final signature using RSA and saves it to the {@code SGN} Bignat.
+     * Computes the final signature using RSA and saves it to the {@code s} Bignat.
      * Fails if the client signature share is fraudulent od corrupt.
      * All keys, message and client signature share must be fully set prior to signing.
      *
@@ -546,45 +541,32 @@ public class RSAServer extends Applet {
         serverPrivateKey.getModulus(n2.as_byte_array(), (short) 0);
 
         try {
-            rsaClient.doFinal(message.as_byte_array(), (short) 0, message.length(), tmpBignatSmall1.as_byte_array(), (short) 0);
-            s1.mod_mult(clientSignature, tmpBignatSmall1, n1);
-            rsaClientVerify.doFinal(s1.as_byte_array(), (short) 0, s1.length(), tmpBignatSmall1.as_byte_array(), (short) 0);
+            rsaClient.doFinal(message.as_byte_array(), (short) 0, message.length(), tmpSmall1.as_byte_array(), (short) 0);
+            s1.mod_mult(clientSignature, tmpSmall1, n1);
 
-            if (!tmpBignatSmall1.same_value(message)) {
+            tmpSmall1.erase();
+            rsaClientVerify.doFinal(s1.as_byte_array(), (short) 0, s1.length(), tmpSmall1.as_byte_array(), (short) 0);
+
+            if (!tmpSmall1.same_value(message)) {
                 ISOException.throwIt(ISO7816.SW_WRONG_DATA);
             }
 
-            rsaServer.doFinal(message.as_byte_array(), (short) 0, message.length(), s2.as_byte_array(), (short) 0);
+            rsaServer.doFinal(message.as_byte_array(), (short) 0, message.length(), tmpSmall2.as_byte_array(), (short) 0);
         } catch (CryptoException e) {
             ISOException.throwIt(e.getReason());
         }
 
-        /*
-        // Compute the full signature
-        Bignum s = Bignum::mod_exp(m, d2, n2) - s1;
-        s.mod_mul_self(Bignum::inverse(n1, n2), n2);
-        s *= n1;
-        s += s1;
-        */
-        s2.mod_sub(s1, n2);
-        inverse(n1, n2, tmpSmall);
-        tmpSmall.mod_mult(s2, tmpSmall, n2);
-        SGN.mult(tmpSmall, n1);
-        SGN.add(s1);
+        tmpSmall2.mod_sub(s1, n2);
+        inverse(n1, n2, tmpSmall1);
+        tmpSmall1.mod_mult(tmpSmall1, tmpSmall2, n2);
+        s.mult(tmpSmall1, n1);
+        s.add(s1);
 
-        tmpBignatSmall1.resize_to_max(true);
-        tmpBignatSmall2.resize_to_max(true);
-        tmpBignatBig.resize_to_max(true);
-        newA.resize_to_max(true);
-        newB.resize_to_max(true);
         n1.resize_to_max(true);
         n2.resize_to_max(true);
         s1.resize_to_max(true);
-        s2.resize_to_max(true);
-        oldA.resize_to_max(true);
-        oldB.resize_to_max(true);
-        quotient.resize_to_max(true);
-        tmpSmall.resize_to_max(true);
+        tmpSmall1.resize_to_max(true);
+        tmpSmall2.resize_to_max(true);
         tmpBig.resize_to_max(true);
     }
 
@@ -598,7 +580,7 @@ public class RSAServer extends Applet {
      * @throws ISOException SW_INCORRECT_P1P2
      */
     private void getFinalSignature(APDU apdu) {
-        if (SGN.is_zero())
+        if (s.is_zero())
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         byte[] apduBuffer = apdu.getBuffer();
@@ -607,11 +589,11 @@ public class RSAServer extends Applet {
 
         switch (apduBuffer[ISO7816.OFFSET_P2]) {
             case Common.P2_PART_0:
-                Common.sendNum(apdu, SGN.as_byte_array(), (short) 0, false);
+                Common.sendNum(apdu, s.as_byte_array(), (short) 0, false);
                 break;
 
             case Common.P2_PART_1:
-                Common.sendNum(apdu, SGN.as_byte_array(), Common.PARTIAL_MODULUS_BYTE_LENGTH, false);
+                Common.sendNum(apdu, s.as_byte_array(), Common.PARTIAL_MODULUS_BYTE_LENGTH, false);
                 break;
 
             default:
@@ -636,23 +618,20 @@ public class RSAServer extends Applet {
 
         publicModulusState = 0x00;
 
-        tmpBignatSmall1.resize_to_max(true);
-        tmpBignatSmall2.resize_to_max(true);
-        tmpBignatBig.resize_to_max(true);
-        clientSignature.resize_to_max(true);
+        tmpSmall1.resize_to_max(true);
+        tmpSmall2.resize_to_max(true);
+        tmpBig.resize_to_max(true);
         message.resize_to_max(true);
-        SGN.resize_to_max(true);
-        newA.resize_to_max(true);
-        newB.resize_to_max(true);
+        clientSignature.resize_to_max(true);
+        s.resize_to_max(true);
+        s1.resize_to_max(true);
         n1.resize_to_max(true);
         n2.resize_to_max(true);
-        s1.resize_to_max(true);
-        s2.resize_to_max(true);
+        newA.resize_to_max(true);
+        newB.resize_to_max(true);
         oldA.resize_to_max(true);
         oldB.resize_to_max(true);
         quotient.resize_to_max(true);
-        tmpSmall.resize_to_max(true);
-        tmpBig.resize_to_max(true);
 
         Common.clearByteArray(keyState);
         Common.clearByteArray(sigState);
@@ -672,10 +651,10 @@ public class RSAServer extends Applet {
         newB.copy(b);
 
         while (!newB.is_zero()) {
-            tmpSmall.copy(newB);
+            oldB.copy(newB);
             newA.mod(newB);
             newB.copy(newA);
-            newA.copy(tmpSmall);
+            newA.copy(oldB);
         }
 
         return newA.same_value(Bignat_Helper.ONE);
@@ -704,16 +683,16 @@ public class RSAServer extends Applet {
             tmpBig.copy(oldA);
             tmpBig.remainder_divide(newA, quotient);
 
-            tmpSmall.copy(newB);
+            tmpSmall1.copy(newB);
             tmpBig.mult(quotient, newB);
             newB.copy(oldB);
-            oldB.copy(tmpSmall);
+            oldB.copy(tmpSmall1);
             newB.subtract(tmpBig);
 
-            tmpSmall.copy(newA);
+            tmpSmall1.copy(newA);
             tmpBig.mult(quotient, newA);
             newA.copy(oldA);
-            oldA.copy(tmpSmall);
+            oldA.copy(tmpSmall1);
             newA.subtract(tmpBig);
         }
 
@@ -722,9 +701,9 @@ public class RSAServer extends Applet {
             ISOException.throwIt(ISO7816.SW_DATA_INVALID);
 
         if (oldB.sign == BignatSgn.NEGATIVE) {
-            tmpSmall.copy(n);
-            tmpSmall.subtract(oldB);
-            oldB.copy(tmpSmall);
+            tmpSmall1.copy(n);
+            tmpSmall1.subtract(oldB);
+            oldB.copy(tmpSmall1);
         }
 
         res.copy(oldB);
