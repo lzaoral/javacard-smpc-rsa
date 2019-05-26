@@ -192,7 +192,7 @@ public class RSAServer extends Applet {
      */
     public RSAServer(byte[] bArray, short bOffset, byte bLength) {
         Bignat_Helper bignatHelper = new ECConfig((short) 256).bnh;
-        bignatHelper.FLAG_FAST_MULT_VIA_RSA = false; // the speed-up does not work with emulator
+        bignatHelper.FLAG_FAST_MULT_VIA_RSA = false; // the speed-up does not work with the emulator
 
         // bignatSgn
         bignatSgnHelper = new Bignat((short) (Common.PARTIAL_MODULUS_BYTE_LENGTH * 2), JCSystem.MEMORY_TYPE_TRANSIENT_RESET, bignatHelper);

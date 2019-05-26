@@ -8,17 +8,13 @@ import org.testng.annotations.Test;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.*;
+import java.util.Random;
 
 import cardTools.Util;
 
 import static javacard.framework.ISO7816.*;
-import static tests.client_sign.ClientSignAPDU.*;
+import static tests.client_sign.ClientSignMgr.*;
 
 /**
  * Test class for the Client-Sign applet.
@@ -28,13 +24,13 @@ import static tests.client_sign.ClientSignAPDU.*;
 public class ClientSignTest {
 
     private static final boolean REAL_CARD = false;
-    private static final int TEST_COUNT = 10;
-    private static final int SW_NO_ERROR = 0x9000;
-    private ClientSignAPDU client;
+    private static final int TEST_COUNT = 1000;
+    private static final int SW_NO_ERROR = 0x9000; // overrides SW_NO_ERROR from ISO7816 to be a positive number
+    private ClientSignMgr client;
 
     @BeforeClass(alwaysRun = true)
     public void setClass() throws Exception {
-        client = new ClientSignAPDU(REAL_CARD);
+        client = new ClientSignMgr(REAL_CARD);
     }
 
     @BeforeMethod(alwaysRun = true)
@@ -825,30 +821,45 @@ public class ClientSignTest {
         Assert.assertEquals(0, res.getData().length);
 
         res = client.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_CLIENT_SIGN, INS_SIGNATURE, NONE, NONE, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_CLIENT_SIGN, INS_SIGNATURE, NONE, NONE, ARR_LENGTH
         ));
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
         Assert.assertArrayEquals(Util.hexStringToByteArray("01C86B7D2282ACDE771B705A2FEE6A6C621D942130A644CCFBA76D5A84ACCF2C6A98B20A023CDC85F1F1A50BF77C9B77FCC9DA206ED6F8FFFD69DE16C786DB19442FCB75B340C2527DEEF6046CAAED6020893C693CD9BA9FF88CD0E554F6185641F0CD47F406AFC79B59130E1DEC1F2D8E8E0D8F4CC94CFB9EF17156E43F4B2FF9D3666583AD2F8CBD8AEC9D16F546D0874B16DEB86892BE331313F5AC4463D28B73C2B0DCF3AD1937518C1D088AD36F7ED29F30542583FB0E67BC17330F519090733825B26730DA236BFDF11EE01F0FA38FE6F5EBD56AB4E37340552A829560DE32C7947E50B97C67649776DB3C18A26399DD2A985E711885A5D827EE3970B2"),
                 res.getData());
     }
 
+    private void generateMessage() throws Exception {
+        try (OutputStream os = new FileOutputStream(MESSAGE_FILE_PATH)) {
+            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os));
+
+            byte[] bytes = new byte[ARR_LENGTH];
+            new Random().nextBytes(bytes);
+            bytes[0] &= 0x0F; // to avoid messages longer than modulus
+
+
+            bw.write(Util.toHexTrimmed(bytes));
+            bw.flush();
+        }
+    }
+
     @Test(groups = "clientSignStressTest", dependsOnGroups = "clientSignSetMessage")
     public void clientSignStressTest() throws Exception {
-        System.out.println("This test requires the reference 'smpc_rsa' in the tests (../) folder.");
+        if (!new File(TEST_PATH + "smpc_rsa").isFile())
+            Assert.fail("This test requires the reference 'smpc_rsa' in the tests (../) folder.");
 
-        ProcessBuilder clientGenerate = new ProcessBuilder("./../smpc_rsa", "client", "generate").directory(new File(TEST_PATH));
-        ProcessBuilder serverGenerate = new ProcessBuilder("./../smpc_rsa", "server", "generate").directory(new File(TEST_PATH));
-        ProcessBuilder serverSign = new ProcessBuilder("./../smpc_rsa", "server", "sign").directory(new File(TEST_PATH));
-        ProcessBuilder serverVerify = new ProcessBuilder("./../smpc_rsa", "server", "verify").directory(new File(TEST_PATH));
+        ProcessBuilder clientGenerate = new ProcessBuilder("./smpc_rsa", "client", "generate").directory(new File(TEST_PATH));
+        ProcessBuilder serverGenerate = new ProcessBuilder("./smpc_rsa", "server", "generate").directory(new File(TEST_PATH));
+        ProcessBuilder serverSign = new ProcessBuilder("./smpc_rsa", "server", "sign").directory(new File(TEST_PATH));
+        ProcessBuilder serverVerify = new ProcessBuilder("./smpc_rsa", "server", "verify").directory(new File(TEST_PATH));
 
         client.setDebug(false);
 
         int nokGenCount = 0;
         int nokSignCount = 0;
 
-        System.out.println("Runs the applet against reference implementation.");
+        System.out.println("Running the sign client applet against reference implementation.");
         System.out.println("Each test may fail only when the modulus is unusable.");
 
         for (int i = 1; i <= TEST_COUNT; i++) {
@@ -856,6 +867,8 @@ public class ClientSignTest {
             System.out.flush();
 
             clientSignResetCard();
+
+            generateMessage();
 
             Process clientGenProc = clientGenerate.start();
             final BufferedReader errReader = new BufferedReader(
@@ -915,16 +928,15 @@ public class ClientSignTest {
                     System.out.println(line);
                 }
 
-                nokSignCount++;
-                continue;
+                Assert.fail("Final signature computation should never fail.");
             }
 
             Assert.assertEquals(0, serverVerify.start().waitFor());
             System.out.println("\u001B[1;32mOK\u001B[0m");
         }
 
-        System.out.printf("Result: Generate/Sign/All: %d/%d/%d (%.02f %% failed)",
-                nokGenCount, nokSignCount, TEST_COUNT, nokGenCount + nokSignCount * 100d / TEST_COUNT
+        System.out.printf("Result: Fail Generate/Fail Sign/All: %d/%d/%d (%.02f %% failed)",
+                nokGenCount, nokSignCount, TEST_COUNT, (double) (nokGenCount + nokSignCount) * 100 / TEST_COUNT
         );
     }
 

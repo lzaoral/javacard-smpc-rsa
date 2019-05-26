@@ -143,6 +143,7 @@ public class CardManager {
                 System.err.println("Applet not installed");
                 return null;
             }
+
         } else {
             System.out.print("Failed to find physical card.");
         }

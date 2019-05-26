@@ -10,12 +10,11 @@ import org.testng.annotations.Test;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.OutputStreamWriter;
+import java.io.*;
+import java.util.Random;
 
 import static javacard.framework.ISO7816.*;
-import static tests.server.ServerAPDU.*;
+import static tests.server.ServerMgr.*; // overrides SW_NO_ERROR from ISO7816 to be a positive number
 
 /**
  * Test class for the Server applet.
@@ -24,16 +23,14 @@ import static tests.server.ServerAPDU.*;
  */
 public class ServerTest {
 
-    // TODo: missing smpc_rsa executable
-
     private static final boolean REAL_CARD = false;
-    private static final int TEST_COUNT = 10;
-    private static final int SW_NO_ERROR = 0x9000;
-    private ServerAPDU server;
+    private static final int TEST_COUNT = 1000;
+    private static final int SW_NO_ERROR = 0x9000; // overrides SW_NO_ERROR from ISO7816 to be a positive number
+    private ServerMgr server;
 
     @BeforeClass(alwaysRun = true)
     public void setClass() throws Exception {
-        server = new ServerAPDU(REAL_CARD);
+        server = new ServerMgr(REAL_CARD);
     }
 
     @BeforeMethod(alwaysRun = true)
@@ -596,7 +593,7 @@ public class ServerTest {
     @Test(groups = "serverGetModulus", dependsOnGroups = "serverSetClientKeys")
     public void serverGetModulusWithoutClientShare() throws Exception {
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, NONE, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, NONE, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
@@ -608,7 +605,7 @@ public class ServerTest {
     public void serverGetModulusWrongP1() throws Exception {
         serverSetKeys();
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, 0xFF, NONE, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, 0xFF, NONE, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
@@ -620,7 +617,7 @@ public class ServerTest {
     public void serverGetModulusWrongP2() throws Exception {
         serverSetKeys();
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, 0xFF, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, 0xFF, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
@@ -637,82 +634,82 @@ public class ServerTest {
             serverSetKeys();
 
             res = server.transmit(new CommandAPDU(
-                    CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_0, CLIENT_ARR_LENGTH
+                    CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_0, ARR_LENGTH
             ));
             Assert.assertNotNull(res);
 
         } while (res.getSW() == SW_WRONG_LENGTH);
 
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_1, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_1, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
     }
 
     @Test(groups = "serverGetModulus", dependsOnGroups = "serverSetClientKeys")
     public void serverGetModulusPart1Twice() throws Exception {
         serverGetModulus();
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_0, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_0, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_0, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_0, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
     }
 
     @Test(groups = "serverGetModulus", dependsOnGroups = "serverSetClientKeys")
     public void serverGetModulusPart2Twice() throws Exception {
         serverGetModulus();
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_1, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_1, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_1, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_1, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
     }
 
     @Test(groups = "serverGetModulus", dependsOnGroups = "serverSetClientKeys")
     public void serverGetModulusSwap() throws Exception {
         serverGetModulus();
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_1, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_1, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_0, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_0, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
     }
 
     @Test(groups = "serverGetModulus", dependsOnGroups = "serverSetClientKeys")
@@ -720,20 +717,20 @@ public class ServerTest {
         serverGetModulus();
 
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_0, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_0, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_1, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_1, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
     }
 
     @Test(groups = "serverSetClientSignature", dependsOnGroups = "serverGetModulus")
@@ -1231,12 +1228,12 @@ public class ServerTest {
         } while (res.getSW() == SW_WRONG_LENGTH);
 
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(CLA_RSA_SMPC_SERVER, INS_GET_PUBLIC_MODULUS, NONE, P2_PART_1));
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
                 CLA_RSA_SMPC_SERVER, INS_SET_CLIENT_SIGNATURE, P1_SET_MESSAGE, P2_PART_0,
@@ -1323,7 +1320,7 @@ public class ServerTest {
         serverGetModulus();
 
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, NONE, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, NONE, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
@@ -1336,7 +1333,7 @@ public class ServerTest {
         serverSignSimple();
 
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, 0xFF, NONE, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, 0xFF, NONE, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
@@ -1349,7 +1346,7 @@ public class ServerTest {
         serverSignSimple();
 
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, 0xFF, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, 0xFF, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
@@ -1362,20 +1359,20 @@ public class ServerTest {
         serverSignSimple();
 
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_0, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_0, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_1, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_1, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
     }
 
     @Test(groups = "serverGetSignature", dependsOnGroups = "serverSign")
@@ -1383,20 +1380,20 @@ public class ServerTest {
         serverSignSimple();
 
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_0, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_0, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_0, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_0, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
     }
 
     @Test(groups = "serverGetSignature", dependsOnGroups = "serverSign")
@@ -1404,20 +1401,20 @@ public class ServerTest {
         serverSignSimple();
 
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_1, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_1, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_1, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_1, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
     }
 
     @Test(groups = "serverGetSignature", dependsOnGroups = "serverSign")
@@ -1425,20 +1422,20 @@ public class ServerTest {
         serverSignSimple();
 
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_1, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_1, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_0, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_0, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
     }
 
     @Test(groups = "serverGetSignature", dependsOnGroups = "serverSign")
@@ -1446,37 +1443,51 @@ public class ServerTest {
         serverSignSimple();
 
         ResponseAPDU res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_0, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_0, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
 
         res = server.transmit(new CommandAPDU(
-                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_1, CLIENT_ARR_LENGTH
+                CLA_RSA_SMPC_SERVER, INS_GET_SIGNATURE, NONE, P2_PART_1, ARR_LENGTH
         ));
 
         Assert.assertNotNull(res);
         Assert.assertEquals(SW_NO_ERROR, res.getSW());
-        Assert.assertEquals(CLIENT_ARR_LENGTH, res.getData().length);
+        Assert.assertEquals(ARR_LENGTH, res.getData().length);
+    }
+
+    private void generateMessage() throws Exception {
+        try (OutputStream os = new FileOutputStream(MESSAGE_FILE_PATH)) {
+            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os));
+
+            byte[] bytes = new byte[ARR_LENGTH];
+            new Random().nextBytes(bytes);
+            bytes[0] &= 0x0F; // to avoid messages longer than modulus
+
+            bw.write(Util.toHexTrimmed(bytes));
+            bw.flush();
+        }
     }
 
     @Test(groups = "serverStressTest", dependsOnGroups = "serverGetSignature")
     public void serverStressTest() throws Exception {
-        System.out.println("This test requires the reference 'smpc_rsa' in the tests (../) folder.");
+        if (!new File(TEST_PATH + "smpc_rsa").isFile())
+            Assert.fail("This test requires the reference 'smpc_rsa' in the tests (../) folder.");
 
-        ProcessBuilder clientGenerate = new ProcessBuilder("./../smpc_rsa", "client", "generate").directory(new File(TEST_PATH));
-        ProcessBuilder clientSign = new ProcessBuilder("./../smpc_rsa", "client", "sign").directory(new File(TEST_PATH));
-        ProcessBuilder serverVerify = new ProcessBuilder("./../smpc_rsa", "server", "verify").directory(new File(TEST_PATH));
+        ProcessBuilder clientGenerate = new ProcessBuilder("./smpc_rsa", "client", "generate").directory(new File(TEST_PATH));
+        ProcessBuilder clientSign = new ProcessBuilder("./smpc_rsa", "client", "sign").directory(new File(TEST_PATH));
+        ProcessBuilder serverVerify = new ProcessBuilder("./smpc_rsa", "server", "verify").directory(new File(TEST_PATH));
 
         server.setDebug(false);
 
         int nokGenCount = 0;
         int nokSignCount = 0;
 
-        System.out.println("Runs the applet against reference implementation.");
-        System.out.println("Each test may fail only when the modulus is unusable.");
+        System.out.println("Running the sign client applet against reference implementation.");
+        System.out.println("Each test should fail only when the modulus is unusable.");
         System.out.println("Due to a bug in emulator, the test may very rarely fail with a wrong signature.");
 
         for (int i = 1; i <= TEST_COUNT; i++) {
@@ -1484,6 +1495,7 @@ public class ServerTest {
             System.out.flush();
 
             serverResetCard();
+            generateMessage();
 
             Process clientGenProc = clientGenerate.start();
             OutputStreamWriter outputStreamWriter = new OutputStreamWriter(
@@ -1511,8 +1523,7 @@ public class ServerTest {
                     continue;
                 }
 
-                System.err.printf("SW: %04X", ret);
-                Assert.fail();
+                Assert.fail(String.format("SW: %04X", ret));
             }
 
             responseAPDU = server.signMessage();
@@ -1525,14 +1536,13 @@ public class ServerTest {
                     System.out.println("Fraudulent or corrupt signature detected!");
 
                     if (REAL_CARD)
-                        Assert.fail();
+                        Assert.fail("Final signature computation on a real card should never fail.");
 
                     nokSignCount++;
                     continue;
                 }
 
-                System.err.printf("SW: %04X", ret);
-                Assert.fail();
+                Assert.fail(String.format("SW: %04X", ret));
             }
 
             Assert.assertEquals(SW_NO_ERROR, responseAPDU.getSW());

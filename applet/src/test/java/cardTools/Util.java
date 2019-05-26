@@ -23,6 +23,10 @@ public class Util {
         return result.toString();
     }
 
+    public static String toHexTrimmed(byte[] bytes) {
+        return toHex(trimLeadingZeroes(bytes));
+    }
+
     public static String bytesToHex(byte[] bytes) {
         char[] hexArray = "0123456789ABCDEF".toCharArray();
         char[] hexChars = new char[bytes.length * 2];
@@ -36,13 +40,17 @@ public class Util {
     
     public static byte[] hexStringToByteArray(String s) {
         String sanitized = s.replace(" ", "");
+        if (sanitized.length() % 2 == 1)
+            sanitized = "0" + sanitized;
+
         byte[] b = new byte[sanitized.length() / 2];
         for (int i = 0; i < b.length; i++) {
             int index = i * 2;
             int v = Integer.parseInt(sanitized.substring(index, index + 2), 16);
             b[i] = (byte) v;
         }
-        return b;
+
+        return trimLeadingZeroes(b);
     }    
     
     
