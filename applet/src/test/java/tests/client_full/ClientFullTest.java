@@ -23,7 +23,7 @@ import static tests.client_full.ClientFullMgr.*; // overrides SW_NO_ERROR from I
 public class ClientFullTest {
 
     private static final boolean REAL_CARD = false;
-    private static final int TEST_COUNT = 1000;
+    private static final int TEST_COUNT = 50;
     private static final int SW_NO_ERROR = 0x9000;
     private ClientFullMgr client;
 

@@ -14,7 +14,7 @@ import java.io.*;
 import java.util.Random;
 
 import static javacard.framework.ISO7816.*;
-import static tests.server.ServerMgr.*; // overrides SW_NO_ERROR from ISO7816 to be a positive number
+import static tests.server.ServerMgr.*;
 
 /**
  * Test class for the Server applet.
@@ -24,7 +24,7 @@ import static tests.server.ServerMgr.*; // overrides SW_NO_ERROR from ISO7816 to
 public class ServerTest {
 
     private static final boolean REAL_CARD = false;
-    private static final int TEST_COUNT = 1000;
+    private static final int TEST_COUNT = 50;
     private static final int SW_NO_ERROR = 0x9000; // overrides SW_NO_ERROR from ISO7816 to be a positive number
     private ServerMgr server;
 

@@ -24,7 +24,7 @@ import static tests.client_sign.ClientSignMgr.*;
 public class ClientSignTest {
 
     private static final boolean REAL_CARD = false;
-    private static final int TEST_COUNT = 1000;
+    private static final int TEST_COUNT = 50;
     private static final int SW_NO_ERROR = 0x9000; // overrides SW_NO_ERROR from ISO7816 to be a positive number
     private ClientSignMgr client;
 
