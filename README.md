@@ -1,5 +1,7 @@
 # JavaCard SMPC RSA
 
+The implementation of the adapted Smart-ID scheme for smart cards.
+
 The project is based on the [JavaCard Template project with Gradle](https://github.com/crocs-muni/javacard-gradle-template-edu) by Dušan Klinec and Petr Švenda.
 
 Using IntelliJ Idea is recommended.
