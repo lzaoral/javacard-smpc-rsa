@@ -1,5 +1,13 @@
 language: java
 jdk: oraclejdk11
+
+before_script:
+  - git clone https://github.com/lzaoral/collaborative-rsa-demo
+  - cd collaborative-rsa-demo
+  - cmake .
+  - make
+  - cp smpc_rsa applet/src/test/java/tests/
+
 script:
   - ./gradlew check
   - ./gradlew buildJavaCard --info
