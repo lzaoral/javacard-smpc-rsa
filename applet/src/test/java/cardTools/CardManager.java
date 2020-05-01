@@ -18,7 +18,12 @@ public class CardManager {
     protected Long lastTransmitTime = (long) 0;
     protected CommandAPDU lastCommand = null;
     protected CardChannel channel = null;
-    
+
+    /**
+     * Add LC=0 byte to the APDU.
+     */
+    protected boolean fixLc = true;
+
     public CardManager(byte[] appletAID) {
         this.appletId = appletAID;
     }
@@ -51,23 +56,21 @@ public class CardManager {
             default:
                 channel = null;
                 bConnected = false;
-                
+
         }
         if (channel != null) {
             bConnected = true;
         }
         return bConnected;
     }
-    
+
     public void Disconnect(boolean bReset) throws CardException {
         channel.getCard().disconnect(bReset); // Disconnect from the card
     }
 
     public CardChannel ConnectPhysicalCard(int targetReaderIndex) throws Exception {
         // JCOP Simulators
-        if (bDebug)
-            System.out.print("Looking for physical cards... ");
-
+        System.out.print("Looking for physical cards... ");
         return connectToCardByTerminalFactory(TerminalFactory.getDefault(), targetReaderIndex);
     }
 
@@ -90,7 +93,7 @@ public class CardManager {
         AID appletAIDRes = simulator.installApplet(appletAID, appletClass, installData, (short) 0, (byte) installData.length);
         simulator.selectApplet(appletAID);
 
-        return new SimulatedCardChannelLocal(simulator, bDebug);
+        return new SimulatedCardChannelLocal(simulator);
     }
 
     private CardChannel connectToCardByTerminalFactory(TerminalFactory factory, int targetReaderIndex) throws CardException {
@@ -106,44 +109,31 @@ public class CardManager {
                     card_found = true;
                 }
             }
-
-            if (bDebug)
-                System.out.println("Success.");
+            System.out.println("Success.");
         } catch (Exception e) {
             System.out.println("Failed.");
-            return null;
         }
 
         if (card_found) {
-            if (bDebug)
-                System.out.println("Cards found: " + terminals);
+            System.out.println("Cards found: " + terminals);
 
             terminal = terminals.get(targetReaderIndex); // Prioritize physical card over simulations
 
-            if (bDebug)
-                System.out.print("Connecting...");
+            System.out.print("Connecting...");
             card = terminal.connect("*"); // Connect with the card
 
-            if (bDebug) {
-                System.out.println(" Done.");
-                System.out.print("Establishing channel...");
-            }
+            System.out.println(" Done.");
 
+            System.out.print("Establishing channel...");
             channel = card.getBasicChannel();
 
-            if (bDebug)
-                System.out.println(" Done.");
+            System.out.println(" Done.");
 
             // Select applet (mpcapplet)
-            if (bDebug)
-                System.out.println("Smartcard: Selecting applet...");
+            System.out.println("Smartcard: Selecting applet...");
 
             CommandAPDU cmd = new CommandAPDU(0x00, 0xa4, 0x04, 0x00, appletId);
-            if (transmit(cmd).getSW() != 0x9000) {
-                System.err.println("Applet not installed");
-                return null;
-            }
-
+            ResponseAPDU response = transmit(cmd);
         } else {
             System.out.print("Failed to find physical card.");
         }
@@ -154,9 +144,13 @@ public class CardManager {
             return null;
         }
     }
-    
+
     public ResponseAPDU transmit(CommandAPDU cmd)
             throws CardException {
+
+        if (isFixLc()){
+            cmd = fixApduLc(cmd);
+        }
 
         lastCommand = cmd;
         if (bDebug) {
@@ -189,6 +183,21 @@ public class CardManager {
         } else {
             System.out.printf("<-- %s [%d ms]\n", swStr, time);
         }
+    }
+
+    private CommandAPDU fixApduLc(CommandAPDU cmd){
+        if (cmd.getNc() != 0){
+            return cmd;
+        }
+
+        byte[] apdu = new byte[] {
+                (byte)cmd.getCLA(),
+                (byte)cmd.getINS(),
+                (byte)cmd.getP1(),
+                (byte)cmd.getP2(),
+                (byte)0
+        };
+        return new CommandAPDU(apdu);
     }
 
     private void log(ResponseAPDU response) {
@@ -249,6 +258,15 @@ public class CardManager {
 
     public CardManager setChannel(CardChannel channel) {
         this.channel = channel;
+        return this;
+    }
+
+    public boolean isFixLc() {
+        return fixLc;
+    }
+
+    public CardManager setFixLc(boolean fixLc) {
+        this.fixLc = fixLc;
         return this;
     }
 }

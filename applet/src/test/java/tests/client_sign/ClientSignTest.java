@@ -839,7 +839,7 @@ public class ClientSignTest {
             bytes[0] &= 0x0F; // to avoid messages longer than modulus
 
 
-            bw.write(Util.toHexTrimmed(bytes));
+            bw.write(Util.toHex(bytes));
             bw.flush();
         }
     }

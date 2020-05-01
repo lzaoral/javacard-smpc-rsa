@@ -86,8 +86,8 @@ public class ClientFullMgr extends AbstractMgr {
         try (OutputStream out = new FileOutputStream(CLIENT_KEYS_SERVER_FILE_PATH)) {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
 
-            writer.write(String.format("%s%n%s%n", Util.toHexTrimmed(dServer.getData()),
-                    Util.toHexTrimmed(n.getData())));
+            writer.write(String.format("%s%n%s%n", Util.toHex(dServer.getData()),
+                    Util.toHex(n.getData())));
 
             writer.flush();
         }
@@ -128,7 +128,7 @@ public class ClientFullMgr extends AbstractMgr {
 
         try (OutputStream out = new FileOutputStream(CLIENT_SIG_SHARE_FILE_PATH)) {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
-            writer.write(String.format("%s%n%s%n", message, Util.toHexTrimmed(res.getData())));
+            writer.write(String.format("%s%n%s%n", message, Util.toHex(res.getData())));
             writer.flush();
         }
 

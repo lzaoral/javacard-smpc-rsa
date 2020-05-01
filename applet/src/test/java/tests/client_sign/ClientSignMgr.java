@@ -123,7 +123,7 @@ public class ClientSignMgr extends AbstractMgr {
         try (OutputStream out = new FileOutputStream(CLIENT_SIG_SHARE_FILE_PATH)) {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
             writer.write(String.format(
-                    "%s%n%s%n", message, Util.toHexTrimmed(res.getData())
+                    "%s%n%s%n", message, Util.toHex(res.getData())
             ));
             writer.flush();
         }
