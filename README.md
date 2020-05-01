@@ -1,5 +1,7 @@
 # JavaCard SMPC RSA
 
+[![Build Status](https://travis-ci.org/lzaoral/javacard-smpc-rsa.svg?branch=master)](https://travis-ci.org/lzaoral/javacard-smpc-rsa)
+
 The implementation of the adapted Smart-ID scheme for smart cards.
 
 The project is based on the [JavaCard Template project with Gradle](https://github.com/crocs-muni/javacard-gradle-template-edu)
