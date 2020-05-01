@@ -9,7 +9,8 @@ before_script:
   - cd collaborative-rsa-demo
   - cmake .
   - make
-  - cp smpc_rsa applet/src/test/java/tests/
+  - cp smpc_rsa ../applet/src/test/java/tests/
+  - cd ..
 
 script:
   - ./gradlew check
