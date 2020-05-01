@@ -2,7 +2,8 @@
 
 The implementation of the adapted Smart-ID scheme for smart cards.
 
-The project is based on the [JavaCard Template project with Gradle](https://github.com/crocs-muni/javacard-gradle-template-edu) by Dušan Klinec and Petr Švenda.
+The project is based on the [JavaCard Template project with Gradle](https://github.com/crocs-muni/javacard-gradle-template-edu)
+by Dušan Klinec and Petr Švenda.
 
 Using IntelliJ Idea is recommended.
 
@@ -13,7 +14,7 @@ The `applet/src/main/java/smpc_rsa/` folder contains the source code.
 To build the project use the `build/buildJavaCard` Gradle task in the IntelliJ Idea
 or use the `gradlew` wrapper script in the root folder.
 
-```
+```shell
 ./gradlew buildJavaCard  --info --rerun-tasks
 ```
 
@@ -29,7 +30,7 @@ given applet versions.
 To test the project use the `verification/test` Gradle task in the IntelliJ Idea
 or use the `gradlew` wrapper script in the root folder.
 
-```
+```shell
 ./gradlew test  --info --rerun-tasks
 ```
 
@@ -38,6 +39,5 @@ or use the `gradlew` wrapper script in the root folder.
 The project can be configured to many versions of the JavaCard platform.
 However, only JavaCard Kit 2.2.2 is attached to lower the size of this archive.
 
-Other versions can be found in the [oracle_javacard_sdks](https://github.com/martinpaljak/oracle_javacard_sdks)
+Other versions can be found in the [`oracle_javacard_sdks`](https://github.com/martinpaljak/oracle_javacard_sdks)
 repository by Martin Paljak. Just clone it into the `libs-sdks` folder.
-
