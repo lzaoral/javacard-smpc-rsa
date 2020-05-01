@@ -1,3 +1,6 @@
+os: linux
+distro: bionic
+
 language: java
 jdk: oraclejdk11
 
