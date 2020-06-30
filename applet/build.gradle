@@ -6,14 +6,21 @@ version '1.0-SNAPSHOT'
 buildscript {
     repositories {
         mavenCentral()
+        maven {
+            url "https://javacard.pro/maven"
+        }
+        maven {
+            url "https://deadcode.me/mvn"
+        }
         // mavenLocal()
     }
     dependencies {
-        classpath 'com.klinec:gradle-javacard:1.6.9'
+        classpath 'com.klinec:gradle-javacard:1.7.2'
     }
 }
 
-apply plugin: 'javacard'
+apply plugin: 'com.klinec.gradle.javacard'
+apply plugin: 'idea'
 sourceCompatibility = 1.8
 
 // Common settings, definitions
@@ -30,6 +37,12 @@ repositories {
     maven {
         url  "https://dl.bintray.com/ph4r05/jcard"
     }
+    maven {
+        url "https://javacard.pro/maven"
+    }
+    maven {
+        url "https://deadcode.me/mvn"
+    }
 
     // Local lib repository
     flatDir {
@@ -39,18 +52,28 @@ repositories {
 
 // Dependencies for your project
 dependencies {
+    jcardsim 'com.klinec:jcardsim:3.0.5.11'
+
     testImplementation 'org.testng:testng:6.1.1'
     testImplementation 'junit:junit:4.13'
     testImplementation 'org.slf4j:slf4j-api:1.7.30'
     testImplementation 'org.slf4j:slf4j-log4j12:1.7.30'
     testImplementation 'org.apache.logging.log4j:log4j-core:2.13.2'
 
-    jcardsim 'com.klinec:jcardsim:3.0.5.9'
-
     // Include plugin as it has bundled GP & other tools.
     // Alternative: include GP manually, but the included
     // version has to be compatible with the plugin.
-    runtimeOnly 'com.klinec:gradle-javacard:1.6.9'
+    runtimeOnly 'com.klinec:gradle-javacard:1.7.2'
+}
+
+task dumpClassPath(dependsOn: ['idea']) {
+    doLast {
+        println "Gradle classpath:\n- " + configurations.compile.files*.name.join("\n- ")
+        println "-------\n"
+        println "IDEA classpath: \n- " + file(project.name + ".iml").readLines()
+                .grep(~/.*"jar:.*/).collect { it.split("[\\/]")[-3].trim() }.join("\n- ")
+        println "-------\n"
+    }
 }
 
 test {
@@ -69,8 +92,6 @@ test {
 
         useDefaultListeners = true
     }
-
-    jvmArgs '-noverify'
 }
 
 // JavaCard SDKs and libraries
@@ -86,7 +107,12 @@ final def JC310b43 = libsSdk + '/jc310b43_kit'
 
 // Which JavaCard SDK to use - select
 // In order to compile JC222 and lower you have to have Java SDK <= 1.8
-final def JC_SELECTED = JC303
+// For more info on JavaCard vs JDK version requirements inspect:
+//   https://github.com/martinpaljak/ant-javacard/wiki/Version-compatibility
+//
+// JC310b43 supports building also for lower versions (cap.targetsdk).
+// If another SDK is selected, please comment the cap.targetsdk setting.
+final def JC_SELECTED = JC310b43
 
 javacard {
 
@@ -107,6 +133,7 @@ javacard {
             aid '01:02:03:04:05:06:07:08:09'
             output 'client_sign.cap'
             // javaversion '1.7'
+            targetsdk JC305
 
             //noinspection GroovyAssignabilityCheck
             applet {
@@ -127,6 +154,7 @@ javacard {
             aid '01:02:03:04:05:06:07:08:09'
             output 'client_full.cap'
             // javaversion '1.7'
+            targetsdk JC305
 
             //noinspection GroovyAssignabilityCheck
             applet {
@@ -142,6 +170,7 @@ javacard {
             aid '01:02:03:04:05:06:07:08:09'
             output 'server.cap'
             // javaversion '1.7'
+            targetsdk JC305
 
             //noinspection GroovyAssignabilityCheck
             applet {
