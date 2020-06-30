@@ -1,5 +1,5 @@
 os: linux
-distro: bionic
+dist: focal
 
 language: java
 jdk: oraclejdk11
